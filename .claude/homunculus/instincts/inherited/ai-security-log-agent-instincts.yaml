@@ -1,0 +1,203 @@
+# Instincts generated from https://github.com/tsmanral/ai-security-log-agent
+# Generated: 2026-03-21T05:01:50.856Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: ai-security-log-agent-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/tsmanral/ai-security-log-agent
+---
+
+# Ai Security Log Agent Commit Length
+
+## Action
+
+Write detailed commit messages (~111 characters for first line)
+
+## Evidence
+
+- Average commit message length: 111 chars
+- Based on 2 commits
+
+---
+id: ai-security-log-agent-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/tsmanral/ai-security-log-agent
+---
+
+# Ai Security Log Agent Naming Files
+
+## Action
+
+Use snake_case naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: snake_case
+
+---
+id: ai-security-log-agent-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/tsmanral/ai-security-log-agent
+---
+
+# Ai Security Log Agent Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: ai-security-log-agent-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/tsmanral/ai-security-log-agent
+---
+
+# Ai Security Log Agent Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: ai-security-log-agent-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/tsmanral/ai-security-log-agent
+---
+
+# Ai Security Log Agent Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: ai-security-log-agent-workflow-add-new-ml-model
+trigger: "when doing add new ml model"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/tsmanral/ai-security-log-agent
+---
+
+# Ai Security Log Agent Workflow Add New Ml Model
+
+## Action
+
+Follow the add-new-ml-model workflow:
+1. Create new model file in models/ (e.g., isolation_forest.py, autoencoder_model.py)
+2. Update __init__.py in models/ to register the new model
+3. Update detection orchestrator or ensemble logic to include the new model
+4. Optionally add or update tests/evaluation scripts
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: ai_sentinel/models/*.py, ai_sentinel/models/__init__.py, ai_sentinel/models/ensemble_model.py
+
+---
+id: ai-security-log-agent-workflow-add-feature-extraction-module
+trigger: "when doing add feature extraction module"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/tsmanral/ai-security-log-agent
+---
+
+# Ai Security Log Agent Workflow Add Feature Extraction Module
+
+## Action
+
+Follow the add-feature-extraction-module workflow:
+1. Create or update feature extraction file in features/ (e.g., behavioral_features.py, temporal_features.py)
+2. Update __init__.py in features/ to expose new features
+3. Update feature_extractor.py to use the new feature logic
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: ai_sentinel/features/*.py, ai_sentinel/features/__init__.py, agent/features/*.py
+
+---
+id: ai-security-log-agent-workflow-add-explainability-component
+trigger: "when doing add explainability component"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/tsmanral/ai-security-log-agent
+---
+
+# Ai Security Log Agent Workflow Add Explainability Component
+
+## Action
+
+Follow the add-explainability-component workflow:
+1. Create or update explainability file (e.g., shap_explainer.py, narrative_builder.py)
+2. Update __init__.py in explainability/ to register new component
+3. Integrate with dashboard or detection pipeline
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: ai_sentinel/explainability/*.py, ai_sentinel/explainability/__init__.py, agent/explainability/*.py
+
+---
+id: ai-security-log-agent-workflow-add-detection-rule-or-classifier
+trigger: "when doing add detection rule or classifier"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/tsmanral/ai-security-log-agent
+---
+
+# Ai Security Log Agent Workflow Add Detection Rule Or Classifier
+
+## Action
+
+Follow the add-detection-rule-or-classifier workflow:
+1. Create or update rule_engine.py or attack_classifier.py in detection/
+2. Update __init__.py in detection/ to register new rule/classifier
+3. Integrate with detection orchestrator
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: ai_sentinel/detection/rule_engine.py, ai_sentinel/detection/attack_classifier.py, ai_sentinel/detection/__init__.py
+
