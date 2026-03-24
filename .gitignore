@@ -1,0 +1,40 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.env/
+.venv/
+
+# Environment variables
+.env
+
+# Databases
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Logs and tracking
+logs/*.log
+dummy_auth.log
+*.log
+
+# Agent local config
+agent_config.yml
+/etc/ai-sentinel-agent/
+
+# Windows Simulator artifacts
+test_agent_windows.py
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
