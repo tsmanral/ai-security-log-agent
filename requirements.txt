@@ -7,3 +7,11 @@ numpy>=1.24.0
 matplotlib>=3.7.0
 plotly>=5.14.0
 shap>=0.42.0
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+pydantic>=2.0.0
+httpx>=0.24.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.0
+torch --index-url https://download.pytorch.org/whl/cpu
+pyyaml>=6.0
