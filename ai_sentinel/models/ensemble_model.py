@@ -1,16 +1,19 @@
 """
-AI-Sentinel V2 — Classical unsupervised ensemble (Layer 2).
+AI-Sentinel V3 — Classical unsupervised ensemble (Layer 2).
 
 Combines Isolation Forest, LOF, and One-Class SVM predictions via
 majority voting with averaged anomaly scores.
+Supports persistence via ``save()`` and ``load()`` using joblib.
 """
 
 import logging
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 
+from ai_sentinel.config import MODEL_DIR
 from ai_sentinel.models.base_model import BaseAnomalyDetector
 from ai_sentinel.models.isolation_forest import IsolationForestModel
 from ai_sentinel.models.local_outlier_factor import LOFModel
@@ -23,6 +26,7 @@ class EnsembleModel:
     """Majority-vote ensemble over multiple base anomaly detectors."""
 
     def __init__(self) -> None:
+        self.name = "ensemble"
         self.models: List[BaseAnomalyDetector] = [
             IsolationForestModel(),
             LOFModel(),
@@ -67,3 +71,47 @@ class EnsembleModel:
             })
 
         return results
+
+    # ── persistence ───────────────────────────────────────────────────────
+
+    def _model_path(self) -> Path:
+        """Return the default file path for this ensemble's persisted state."""
+        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        return MODEL_DIR / "ensemble.joblib"
+
+    def save(self, path: Optional[Path] = None) -> Path:
+        """
+        Persist all sub-models. Each base model saves itself, then the
+        ensemble wrapper is also saved via joblib.
+        """
+        import joblib
+
+        target = path or self._model_path()
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        # Save each sub-model individually
+        for m in self.models:
+            m.save()
+
+        # Save the ensemble wrapper
+        joblib.dump(self, str(target))
+        logger.info("Ensemble saved to %s", target)
+        return target
+
+    @classmethod
+    def load(cls, path: Optional[Path] = None) -> "EnsembleModel":
+        """Load a persisted ensemble from disk."""
+        import joblib
+
+        target = path or (MODEL_DIR / "ensemble.joblib")
+        if not target.exists():
+            logger.info("No persisted ensemble found at %s — creating fresh.", target)
+            return cls()
+
+        try:
+            model = joblib.load(str(target))
+            logger.info("Ensemble loaded from %s", target)
+            return model
+        except Exception:
+            logger.exception("Failed to load ensemble from %s — creating fresh.", target)
+            return cls()
