@@ -1,12 +1,12 @@
 """
-AI-Sentinel V2 — Narrative builder.
+AI-Sentinel V3 — Narrative builder.
 
 Generates human-readable threat narratives that reference all detection
-layers: statistical baseline deviations, ensemble scores, and autoencoder
-reconstruction errors.
+layers: statistical baseline deviations, ensemble scores, autoencoder
+reconstruction errors, and severity context.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 class NarrativeBuilder:
@@ -20,6 +20,7 @@ class NarrativeBuilder:
         layer1_z: float = 0.0,
         layer2_score: float = 0.0,
         layer3_error: float = 0.0,
+        severity_context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Construct a narrative string from detection context.
@@ -31,6 +32,7 @@ class NarrativeBuilder:
             layer1_z: Max z-score from statistical baseline.
             layer2_score: Averaged score from classical ensemble.
             layer3_error: Reconstruction error from autoencoder.
+            severity_context: Optional dict with severity_score, severity_label, urgency.
 
         Returns:
             Multi-sentence narrative string.
@@ -39,10 +41,29 @@ class NarrativeBuilder:
         user = row_data.get("effective_username", "Unknown")
         device = row_data.get("device_id", "Unknown Device")
 
+        # Severity badge
+        sev_label = "MEDIUM"
+        sev_score = 0.0
+        urgency = ""
+        if severity_context:
+            sev_label = severity_context.get("severity_label", "MEDIUM")
+            sev_score = severity_context.get("severity_score", 0.0)
+            urgency = severity_context.get("urgency", "")
+
+        sev_emoji = {
+            "CRITICAL": "🔴",
+            "HIGH": "🟠",
+            "MEDIUM": "🟡",
+            "LOW": "🟢",
+        }.get(sev_label, "⚪")
+
         parts = [
-            f"⚠️ **{threat_type}** detected ({mitre_id}).",
+            f"{sev_emoji} **[{sev_label}]** **{threat_type}** detected ({mitre_id}).",
             f"Source: **{ip}** → user **'{user}'** on device `{device}`.",
         ]
+
+        if sev_score > 0:
+            parts.append(f"Severity score: **{sev_score:.2f}**.")
 
         # Layer details
         layer_reasons = []
@@ -70,6 +91,10 @@ class NarrativeBuilder:
             details.append("activity during off-hours")
         if details:
             parts.append("Context: " + "; ".join(details) + ".")
+
+        # Urgency from severity
+        if urgency:
+            parts.append(f"**{urgency}**")
 
         # Guidance
         advice_map = {

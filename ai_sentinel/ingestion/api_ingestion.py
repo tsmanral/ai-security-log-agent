@@ -96,6 +96,21 @@ def _authenticate_device(x_device_id: str = Header(...), x_api_key: str = Header
     return device
 
 
+# ── Module-level singleton orchestrator ──────────────────────────────────
+# Keep one instance alive so models, baselines, and state persist across calls.
+
+_orchestrator = None
+
+
+def _get_orchestrator():
+    """Return the singleton DetectionOrchestrator, creating it once."""
+    global _orchestrator
+    if _orchestrator is None:
+        from ai_sentinel.detection.detection_orchestrator import DetectionOrchestrator
+        _orchestrator = DetectionOrchestrator()
+    return _orchestrator
+
+
 # ── Endpoint ──────────────────────────────────────────────────────────────
 
 
@@ -136,11 +151,9 @@ async def ingest_batch(
     touch_device(device_id)
     logger.info("Ingested %d events from device %s", count, device_id)
 
-    # ── trigger online detection (import here to avoid circular deps) ───
+    # ── trigger online detection using the singleton orchestrator ────────
     try:
-        from ai_sentinel.detection.detection_orchestrator import DetectionOrchestrator
-
-        orchestrator = DetectionOrchestrator()
+        orchestrator = _get_orchestrator()
         orchestrator.run_for_new_events(device_id=device_id)
     except Exception:
         logger.exception("Online detection failed for device %s", device_id)

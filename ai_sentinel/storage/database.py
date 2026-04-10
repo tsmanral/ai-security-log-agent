@@ -1,9 +1,9 @@
 """
-AI-Sentinel V2 — SQLite storage layer.
+AI-Sentinel V3 — SQLite storage layer.
 
-Manages the database schema for users, devices, normalized events, sessions,
-user profiles, and anomaly detection results.  Provides CRUD helpers used by
-the ingestion API, detection orchestrator, and dashboard.
+Manages the database lifecycle via migrations, provides CRUD helpers for
+users, devices, events, anomalies, incidents, heartbeats, model registry,
+metrics, threat intel, and feature drift.
 """
 
 import json
@@ -19,8 +19,9 @@ logger = logging.getLogger(__name__)
 
 # ── connection helper ──────────────────────────────────────────────────────
 
+
 def get_connection() -> sqlite3.Connection:
-    """Return a connection to the V2 SQLite database."""
+    """Return a connection to the V3 SQLite database."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
@@ -28,104 +29,37 @@ def get_connection() -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
-# ── schema bootstrap ──────────────────────────────────────────────────────
 
-_SCHEMA_SQL = """
--- Dashboard user accounts
-CREATE TABLE IF NOT EXISTS users (
-    id            TEXT PRIMARY KEY,
-    username      TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- Registered endpoint devices
-CREATE TABLE IF NOT EXISTS devices (
-    id            TEXT PRIMARY KEY,
-    user_id       TEXT NOT NULL REFERENCES users(id),
-    hostname      TEXT NOT NULL,
-    os_type       TEXT NOT NULL,
-    display_name  TEXT,
-    api_key_hash  TEXT NOT NULL,
-    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-    last_seen_at  DATETIME
-);
-
--- Single-use, short-lived registration tokens
-CREATE TABLE IF NOT EXISTS registration_tokens (
-    token      TEXT PRIMARY KEY,
-    user_id    TEXT NOT NULL REFERENCES users(id),
-    expires_at DATETIME NOT NULL,
-    used       BOOLEAN DEFAULT 0
-);
-
--- Normalized events from all agents
-CREATE TABLE IF NOT EXISTS normalized_events (
-    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp          DATETIME NOT NULL,
-    device_id          TEXT REFERENCES devices(id),
-    user_id            TEXT REFERENCES users(id),
-    host               TEXT,
-    effective_username TEXT,
-    source_ip          TEXT,
-    event_type         TEXT NOT NULL,
-    raw_message        TEXT NOT NULL,
-    attributes         TEXT,
-    is_synthetic       BOOLEAN DEFAULT 0
-);
-
--- Per-device detection watermark (online mode)
-CREATE TABLE IF NOT EXISTS detection_watermarks (
-    device_id           TEXT PRIMARY KEY REFERENCES devices(id),
-    last_processed_id   INTEGER DEFAULT 0,
-    last_run_at         DATETIME
-);
-
--- V2 anomaly detection results
-CREATE TABLE IF NOT EXISTS anomalies_v2 (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id        INTEGER REFERENCES normalized_events(id),
-    device_id       TEXT,
-    user_id         TEXT,
-    layer1_score    REAL,
-    layer2_score    REAL,
-    layer2_votes    INTEGER,
-    layer3_score    REAL,
-    is_anomaly      BOOLEAN,
-    threat_type     TEXT,
-    mitre_technique TEXT,
-    narrative       TEXT,
-    is_synthetic    BOOLEAN DEFAULT 0,
-    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_events_user_ts   ON normalized_events(user_id, timestamp);
-CREATE INDEX IF NOT EXISTS idx_events_device_ts ON normalized_events(device_id, timestamp);
-CREATE INDEX IF NOT EXISTS idx_events_synthetic  ON normalized_events(is_synthetic);
-CREATE INDEX IF NOT EXISTS idx_anomalies_user    ON anomalies_v2(user_id);
-CREATE INDEX IF NOT EXISTS idx_anomalies_device  ON anomalies_v2(device_id);
-"""
+# ── schema bootstrap (migration-based) ────────────────────────────────────
 
 
 def init_db() -> None:
-    """Create all tables and indexes if they do not yet exist."""
-    logger.info("Initializing V2 database at %s", DB_PATH)
+    """Run all pending migrations to bring the schema up to date."""
+    from ai_sentinel.storage.migration_runner import run_migrations
+
+    logger.info("Initializing V3 database at %s", DB_PATH)
     conn = get_connection()
-    conn.executescript(_SCHEMA_SQL)
-    conn.commit()
+    run_migrations(conn)
     conn.close()
-    logger.info("V2 database schema ready.")
+    logger.info("V3 database schema ready.")
 
 
-# ── CRUD: users ───────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+#  CRUD: users
+# ══════════════════════════════════════════════════════════════════════════
 
-def create_user(user_id: str, username: str, password_hash: str) -> None:
+
+def create_user(
+    user_id: str,
+    username: str,
+    password_hash: str,
+    role: str = "ANALYST",
+) -> None:
     """Insert a new dashboard user."""
     conn = get_connection()
     conn.execute(
-        "INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)",
-        (user_id, username, password_hash),
+        "INSERT INTO users (id, username, password_hash, role) VALUES (?, ?, ?, ?)",
+        (user_id, username, password_hash, role),
     )
     conn.commit()
     conn.close()
@@ -141,7 +75,34 @@ def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
     return dict(row) if row else None
 
 
-# ── CRUD: devices ─────────────────────────────────────────────────────────
+def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+    """Return a user by ID."""
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def update_user_role(user_id: str, role: str) -> None:
+    """Update a user's role."""
+    conn = get_connection()
+    conn.execute("UPDATE users SET role = ? WHERE id = ?", (role, user_id))
+    conn.commit()
+    conn.close()
+
+
+def list_users() -> List[Dict[str, Any]]:
+    """Return all users."""
+    conn = get_connection()
+    rows = conn.execute("SELECT id, username, role, created_at FROM users").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  CRUD: devices
+# ══════════════════════════════════════════════════════════════════════════
+
 
 def create_device(
     device_id: str,
@@ -182,6 +143,14 @@ def get_devices_for_user(user_id: str) -> List[Dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def get_all_devices() -> List[Dict[str, Any]]:
+    """Return all registered devices."""
+    conn = get_connection()
+    rows = conn.execute("SELECT * FROM devices ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 def touch_device(device_id: str) -> None:
     """Update *last_seen_at* for a device."""
     conn = get_connection()
@@ -193,7 +162,33 @@ def touch_device(device_id: str) -> None:
     conn.close()
 
 
-# ── CRUD: registration tokens ────────────────────────────────────────────
+def update_device_status(device_id: str, status: str) -> None:
+    """Update device status (BASELINING | ONLINE | OFFLINE)."""
+    conn = get_connection()
+    conn.execute("UPDATE devices SET status = ? WHERE id = ?", (status, device_id))
+    conn.commit()
+    conn.close()
+
+
+def increment_device_event_count(device_id: str, count: int = 1) -> int:
+    """Increment the event_count for a device and return new total."""
+    conn = get_connection()
+    conn.execute(
+        "UPDATE devices SET event_count = event_count + ? WHERE id = ?",
+        (count, device_id),
+    )
+    conn.commit()
+    row = conn.execute(
+        "SELECT event_count FROM devices WHERE id = ?", (device_id,)
+    ).fetchone()
+    conn.close()
+    return dict(row)["event_count"] if row else 0
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  CRUD: registration tokens
+# ══════════════════════════════════════════════════════════════════════════
+
 
 def store_token(token: str, user_id: str, expires_at: datetime) -> None:
     """Persist a new registration token."""
@@ -211,7 +206,6 @@ def consume_token(token: str) -> Optional[Dict[str, Any]]:
     Validate and consume a registration token.
 
     Returns the token row (with ``user_id``) if valid, else *None*.
-    A token is valid when it has not been used and has not expired.
     """
     conn = get_connection()
     row = conn.execute(
@@ -230,14 +224,16 @@ def consume_token(token: str) -> Optional[Dict[str, Any]]:
         conn.close()
         return None
 
-    # Mark as consumed
     conn.execute("UPDATE registration_tokens SET used = 1 WHERE token = ?", (token,))
     conn.commit()
     conn.close()
     return data
 
 
-# ── CRUD: normalized events ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+#  CRUD: normalized events
+# ══════════════════════════════════════════════════════════════════════════
+
 
 def insert_event(event: Dict[str, Any]) -> int:
     """Insert a single normalized event and return its row ID."""
@@ -297,7 +293,7 @@ def insert_events_batch(events: List[Dict[str, Any]]) -> int:
 def get_events_since(
     device_id: str, after_id: int, limit: int = 500
 ) -> List[Dict[str, Any]]:
-    """Fetch events for a device newer than *after_id* (for online detection)."""
+    """Fetch events for a device newer than *after_id*."""
     conn = get_connection()
     rows = conn.execute(
         """SELECT * FROM normalized_events
@@ -312,7 +308,7 @@ def get_events_since(
 def get_events_for_user(
     user_id: str, synthetic: bool = False, limit: int = 5000
 ) -> List[Dict[str, Any]]:
-    """Fetch events belonging to a user, optionally filtered by synthetic flag."""
+    """Fetch events belonging to a user."""
     conn = get_connection()
     rows = conn.execute(
         """SELECT * FROM normalized_events
@@ -324,7 +320,21 @@ def get_events_for_user(
     return [dict(r) for r in rows]
 
 
-# ── CRUD: detection watermarks ────────────────────────────────────────────
+def get_event_count_for_device(device_id: str) -> int:
+    """Return total event count for a device."""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT COUNT(*) as cnt FROM normalized_events WHERE device_id = ?",
+        (device_id,),
+    ).fetchone()
+    conn.close()
+    return dict(row)["cnt"] if row else 0
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  CRUD: detection watermarks
+# ══════════════════════════════════════════════════════════════════════════
+
 
 def get_watermark(device_id: str) -> int:
     """Return the last processed event ID for online detection."""
@@ -352,29 +362,42 @@ def set_watermark(device_id: str, last_id: int) -> None:
     conn.close()
 
 
-# ── CRUD: anomalies ──────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+#  CRUD: anomalies (V3)
+# ══════════════════════════════════════════════════════════════════════════
+
 
 def insert_anomaly(anomaly: Dict[str, Any]) -> int:
-    """Persist a detection result."""
+    """Persist a V3 detection result."""
     conn = get_connection()
     cur = conn.execute(
-        """INSERT INTO anomalies_v2
-           (event_id, device_id, user_id,
+        """INSERT INTO anomalies
+           (event_id, device_id, user_id, source_ip,
             layer1_score, layer2_score, layer2_votes, layer3_score,
-            is_anomaly, threat_type, mitre_technique, narrative, is_synthetic)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            severity_score, severity_label,
+            is_anomaly, threat_type, attack_type,
+            mitre_technique, mitre_confidence,
+            narrative, shap_values, incident_id, is_synthetic)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             anomaly.get("event_id"),
             anomaly.get("device_id"),
             anomaly.get("user_id"),
+            anomaly.get("source_ip"),
             anomaly.get("layer1_score"),
             anomaly.get("layer2_score"),
             anomaly.get("layer2_votes"),
             anomaly.get("layer3_score"),
+            anomaly.get("severity_score"),
+            anomaly.get("severity_label"),
             anomaly.get("is_anomaly"),
             anomaly.get("threat_type"),
+            anomaly.get("attack_type"),
             anomaly.get("mitre_technique"),
+            anomaly.get("mitre_confidence"),
             anomaly.get("narrative"),
+            json.dumps(anomaly.get("shap_values", {})),
+            anomaly.get("incident_id"),
             anomaly.get("is_synthetic", False),
         ),
     )
@@ -390,7 +413,7 @@ def get_anomalies_for_user(
     """Return anomalies belonging to a user."""
     conn = get_connection()
     rows = conn.execute(
-        """SELECT * FROM anomalies_v2
+        """SELECT * FROM anomalies
            WHERE user_id = ? AND is_synthetic = ?
            ORDER BY created_at DESC LIMIT ?""",
         (user_id, int(synthetic), limit),
@@ -399,7 +422,478 @@ def get_anomalies_for_user(
     return [dict(r) for r in rows]
 
 
-# ── Retention cleanup ─────────────────────────────────────────────────────
+def get_anomalies_for_device(
+    device_id: str, limit: int = 200
+) -> List[Dict[str, Any]]:
+    """Return anomalies for a specific device."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT * FROM anomalies
+           WHERE device_id = ?
+           ORDER BY created_at DESC LIMIT ?""",
+        (device_id, limit),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_anomalies_for_incident(incident_id: int) -> List[Dict[str, Any]]:
+    """Return all anomalies linked to an incident."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT a.*, e.raw_message, e.effective_username, e.host
+           FROM anomalies a
+           LEFT JOIN normalized_events e ON a.event_id = e.id
+           WHERE a.incident_id = ?
+           ORDER BY a.created_at ASC""",
+        (incident_id,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_recent_anomalies(limit: int = 100) -> List[Dict[str, Any]]:
+    """Return the most recent anomalies across all devices."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT * FROM anomalies
+           WHERE is_anomaly = 1
+           ORDER BY created_at DESC LIMIT ?""",
+        (limit,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def update_anomaly_incident(anomaly_id: int, incident_id: int) -> None:
+    """Link an anomaly to an incident."""
+    conn = get_connection()
+    conn.execute(
+        "UPDATE anomalies SET incident_id = ? WHERE id = ?",
+        (incident_id, anomaly_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  CRUD: incidents
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def create_incident(
+    device_id: str,
+    source_ip: str,
+    attack_type: str,
+    severity_label: str,
+    first_seen: str,
+) -> int:
+    """Create a new incident. Returns the incident ID."""
+    conn = get_connection()
+    cur = conn.execute(
+        """INSERT INTO incidents
+           (device_id, source_ip, attack_type, severity_label, first_seen, last_seen)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (device_id, source_ip, attack_type, severity_label, first_seen, first_seen),
+    )
+    incident_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return incident_id or 0
+
+
+def get_incident(incident_id: int) -> Optional[Dict[str, Any]]:
+    """Fetch an incident by ID."""
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM incidents WHERE id = ?", (incident_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_open_incident(
+    device_id: str, source_ip: str, attack_type: str, window_start: str
+) -> Optional[Dict[str, Any]]:
+    """Find an open incident matching the grouping key within the time window."""
+    conn = get_connection()
+    row = conn.execute(
+        """SELECT * FROM incidents
+           WHERE device_id = ? AND source_ip = ? AND attack_type = ?
+             AND status IN ('OPEN', 'INVESTIGATING')
+             AND last_seen >= ?
+           ORDER BY last_seen DESC LIMIT 1""",
+        (device_id, source_ip, attack_type, window_start),
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def update_incident_last_seen(incident_id: int, last_seen: str) -> None:
+    """Update last_seen and bump anomaly_count for an incident."""
+    conn = get_connection()
+    conn.execute(
+        """UPDATE incidents
+           SET last_seen = ?, anomaly_count = anomaly_count + 1
+           WHERE id = ?""",
+        (last_seen, incident_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def update_incident_status(incident_id: int, status: str, notes: str = "") -> None:
+    """Update incident status (OPEN, INVESTIGATING, RESOLVED, FALSE_POSITIVE)."""
+    conn = get_connection()
+    resolved_at = datetime.utcnow().isoformat() if status in ("RESOLVED", "FALSE_POSITIVE") else None
+    conn.execute(
+        """UPDATE incidents
+           SET status = ?, notes = ?, resolved_at = COALESCE(?, resolved_at)
+           WHERE id = ?""",
+        (status, notes, resolved_at, incident_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def assign_incident(incident_id: int, user_id: str) -> None:
+    """Assign an incident to a user."""
+    conn = get_connection()
+    conn.execute(
+        "UPDATE incidents SET assigned_to = ?, status = 'INVESTIGATING' WHERE id = ?",
+        (user_id, incident_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_open_incidents(limit: int = 100) -> List[Dict[str, Any]]:
+    """Return open/investigating incidents."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT * FROM incidents
+           WHERE status IN ('OPEN', 'INVESTIGATING')
+           ORDER BY last_seen DESC LIMIT ?""",
+        (limit,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_all_incidents(
+    status: Optional[str] = None, limit: int = 200
+) -> List[Dict[str, Any]]:
+    """Return incidents, optionally filtered by status."""
+    conn = get_connection()
+    if status:
+        rows = conn.execute(
+            "SELECT * FROM incidents WHERE status = ? ORDER BY last_seen DESC LIMIT ?",
+            (status, limit),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM incidents ORDER BY last_seen DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  CRUD: device heartbeats
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def insert_heartbeat(
+    device_id: str,
+    cpu_pct: Optional[float] = None,
+    mem_pct: Optional[float] = None,
+    agent_version: Optional[str] = None,
+) -> None:
+    """Record a heartbeat from a device."""
+    conn = get_connection()
+    conn.execute(
+        """INSERT INTO device_heartbeats (device_id, cpu_pct, mem_pct, agent_version)
+           VALUES (?, ?, ?, ?)""",
+        (device_id, cpu_pct, mem_pct, agent_version),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_latest_heartbeat(device_id: str) -> Optional[Dict[str, Any]]:
+    """Return the most recent heartbeat for a device."""
+    conn = get_connection()
+    row = conn.execute(
+        """SELECT * FROM device_heartbeats
+           WHERE device_id = ?
+           ORDER BY timestamp DESC LIMIT 1""",
+        (device_id,),
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  CRUD: model registry
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def register_model(
+    model_name: str,
+    model_type: str,
+    file_path: str,
+    event_count: int = 0,
+    metrics: Optional[dict] = None,
+) -> int:
+    """Register a trained model. Returns the registry ID."""
+    conn = get_connection()
+    cur = conn.execute(
+        """INSERT INTO model_registry
+           (model_name, model_type, file_path, trained_at, event_count, metrics)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (
+            model_name,
+            model_type,
+            file_path,
+            datetime.utcnow().isoformat(),
+            event_count,
+            json.dumps(metrics or {}),
+        ),
+    )
+    reg_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return reg_id or 0
+
+
+def get_latest_model(model_name: str) -> Optional[Dict[str, Any]]:
+    """Get the most recent model entry for a given name."""
+    conn = get_connection()
+    row = conn.execute(
+        """SELECT * FROM model_registry
+           WHERE model_name = ?
+           ORDER BY version DESC LIMIT 1""",
+        (model_name,),
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def mark_model_stale(model_name: str) -> None:
+    """Flag the latest version of a model as stale."""
+    conn = get_connection()
+    conn.execute(
+        """UPDATE model_registry SET is_stale = TRUE
+           WHERE model_name = ?
+           AND version = (SELECT MAX(version) FROM model_registry WHERE model_name = ?)""",
+        (model_name, model_name),
+    )
+    conn.commit()
+    conn.close()
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  CRUD: metrics_5min
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def upsert_metrics_5min(
+    device_id: str,
+    window_start: str,
+    event_count: int,
+    anomaly_count: int,
+    avg_severity: float,
+    max_severity: float,
+    unique_ips: int,
+    unique_users: int,
+) -> None:
+    """Insert or update a 5-minute metrics window."""
+    conn = get_connection()
+    conn.execute(
+        """INSERT INTO metrics_5min
+           (device_id, window_start, event_count, anomaly_count,
+            avg_severity, max_severity, unique_ips, unique_users)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(device_id, window_start) DO UPDATE SET
+               event_count  = excluded.event_count,
+               anomaly_count = excluded.anomaly_count,
+               avg_severity = excluded.avg_severity,
+               max_severity = excluded.max_severity,
+               unique_ips   = excluded.unique_ips,
+               unique_users = excluded.unique_users""",
+        (device_id, window_start, event_count, anomaly_count,
+         avg_severity, max_severity, unique_ips, unique_users),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_metrics_timeseries(
+    device_id: str, start: str, end: str
+) -> List[Dict[str, Any]]:
+    """Return metrics_5min rows for a device within a time range."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT * FROM metrics_5min
+           WHERE device_id = ? AND window_start BETWEEN ? AND ?
+           ORDER BY window_start ASC""",
+        (device_id, start, end),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  CRUD: threat intelligence cache
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def upsert_threat_intel(
+    ip_address: str,
+    abuse_score: int,
+    country_code: str = "",
+    isp: str = "",
+    domain: str = "",
+    is_tor: bool = False,
+    total_reports: int = 0,
+    last_reported: str = "",
+    raw_response: str = "",
+    cache_hours: int = 24,
+) -> None:
+    """Cache a threat intelligence lookup."""
+    now = datetime.utcnow()
+    expires = now + timedelta(hours=cache_hours)
+    conn = get_connection()
+    conn.execute(
+        """INSERT INTO threat_intel_cache
+           (ip_address, abuse_score, country_code, isp, domain, is_tor,
+            total_reports, last_reported, raw_response, queried_at, expires_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(ip_address) DO UPDATE SET
+               abuse_score   = excluded.abuse_score,
+               country_code  = excluded.country_code,
+               isp           = excluded.isp,
+               domain        = excluded.domain,
+               is_tor        = excluded.is_tor,
+               total_reports = excluded.total_reports,
+               last_reported = excluded.last_reported,
+               raw_response  = excluded.raw_response,
+               queried_at    = excluded.queried_at,
+               expires_at    = excluded.expires_at""",
+        (ip_address, abuse_score, country_code, isp, domain, is_tor,
+         total_reports, last_reported, raw_response,
+         now.isoformat(), expires.isoformat()),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_threat_intel(ip_address: str) -> Optional[Dict[str, Any]]:
+    """Return cached threat intel for an IP, or None if expired/missing."""
+    conn = get_connection()
+    row = conn.execute(
+        """SELECT * FROM threat_intel_cache
+           WHERE ip_address = ? AND expires_at > ?""",
+        (ip_address, datetime.utcnow().isoformat()),
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_expiring_threat_intel(limit: int = 50) -> List[Dict[str, Any]]:
+    """Return threat intel entries that are about to expire."""
+    conn = get_connection()
+    cutoff = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+    rows = conn.execute(
+        """SELECT * FROM threat_intel_cache
+           WHERE expires_at <= ?
+           ORDER BY expires_at ASC LIMIT ?""",
+        (cutoff, limit),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  CRUD: IP geolocation
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def upsert_ip_geolocation(
+    ip_address: str,
+    latitude: float,
+    longitude: float,
+    city: str = "",
+    country: str = "",
+) -> None:
+    """Cache a geolocation result."""
+    conn = get_connection()
+    conn.execute(
+        """INSERT INTO ip_geolocation (ip_address, latitude, longitude, city, country, resolved_at)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(ip_address) DO UPDATE SET
+               latitude = excluded.latitude,
+               longitude = excluded.longitude,
+               city = excluded.city,
+               country = excluded.country,
+               resolved_at = excluded.resolved_at""",
+        (ip_address, latitude, longitude, city, country, datetime.utcnow().isoformat()),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_unresolved_ips(limit: int = 50) -> List[str]:
+    """Return IPs from events that don't yet have a geolocation entry."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT DISTINCT ne.source_ip
+           FROM normalized_events ne
+           LEFT JOIN ip_geolocation geo ON ne.source_ip = geo.ip_address
+           WHERE ne.source_ip IS NOT NULL AND ne.source_ip != ''
+             AND geo.ip_address IS NULL
+           LIMIT ?""",
+        (limit,),
+    ).fetchall()
+    conn.close()
+    return [r[0] for r in rows]
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  CRUD: feature drift
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def insert_drift_record(
+    model_name: str, feature_name: str, psi_value: float, is_drifted: bool
+) -> None:
+    """Record a PSI drift measurement."""
+    conn = get_connection()
+    conn.execute(
+        """INSERT INTO feature_drift (model_name, feature_name, psi_value, is_drifted)
+           VALUES (?, ?, ?, ?)""",
+        (model_name, feature_name, psi_value, is_drifted),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_drift_records(model_name: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """Return recent drift measurements for a model."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT * FROM feature_drift
+           WHERE model_name = ?
+           ORDER BY measured_at DESC LIMIT ?""",
+        (model_name, limit),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  Retention cleanup
+# ══════════════════════════════════════════════════════════════════════════
+
 
 def cleanup_old_data() -> int:
     """Delete events and anomalies older than RETENTION_DAYS. Returns rows deleted."""
@@ -409,7 +903,10 @@ def cleanup_old_data() -> int:
         "DELETE FROM normalized_events WHERE timestamp < ?", (cutoff,)
     )
     events_deleted = cur.rowcount
-    conn.execute("DELETE FROM anomalies_v2 WHERE created_at < ?", (cutoff,))
+    conn.execute("DELETE FROM anomalies WHERE created_at < ?", (cutoff,))
+    conn.execute("DELETE FROM device_heartbeats WHERE timestamp < ?", (cutoff,))
+    conn.execute("DELETE FROM metrics_5min WHERE window_start < ?", (cutoff,))
+    conn.execute("DELETE FROM feature_drift WHERE measured_at < ?", (cutoff,))
     conn.commit()
     conn.close()
     logger.info("Retention cleanup: removed %d events older than %s", events_deleted, cutoff)
