@@ -7,6 +7,9 @@
 
 -- [V4 ENHANCEMENT — gap: analyst feedback loop]
 -- Analyst false-positive / true-positive feedback on individual alerts
+-- [DESIGN CHOICE] No FK constraint on alert_id: feedback may arrive out-of-order
+-- (e.g. UI feedback sent before anomaly write completes). Application layer
+-- validates alert_id existence when rendering the feedback table.
 CREATE TABLE IF NOT EXISTS alerts_feedback (
     id                   INTEGER PRIMARY KEY AUTOINCREMENT,
     alert_id             INTEGER NOT NULL,
@@ -15,8 +18,7 @@ CREATE TABLE IF NOT EXISTS alerts_feedback (
     fp_pattern           TEXT,
     suggested_thresholds TEXT,   -- JSON blob of {feature: new_threshold}
     source_type          TEXT,
-    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (alert_id) REFERENCES anomalies(id)
+    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- [V4 ENHANCEMENT — gap: multi-source ingestion health]

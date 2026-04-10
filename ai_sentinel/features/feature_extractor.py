@@ -179,20 +179,30 @@ def _add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # Flag failed authentication events
     df["_is_failure"] = ~df["success"].astype(bool)
+    df["_attempt"]    = 1
 
-    # Rolling 5-min and 15-min failure counts per source_ip
-    df["failed_logins_last_5min"] = df.groupby("source_ip", group_keys=False).apply(
-        lambda g: _rolling_count(g, col="_is_failure", window="5min")
-    )
-    df["failed_logins_last_15min"] = df.groupby("source_ip", group_keys=False).apply(
-        lambda g: _rolling_count(g, col="_is_failure", window="15min")
-    )
+    # Rolling counts — compute per group then concat back
+    # [DESIGN CHOICE] pandas 2.x groupby().apply() returns a DataFrame when
+    # the applied function returns a Series, so we use a concat approach instead.
+    failed_5m_parts  = []
+    failed_15m_parts = []
+    velocity_parts   = []
+
+    for ip, group in df.groupby("source_ip", group_keys=False):
+        failed_5m_parts.append(_rolling_count(group, "_is_failure", "5min"))
+        failed_15m_parts.append(_rolling_count(group, "_is_failure", "15min"))
+        velocity_parts.append(_rolling_count(group, "_attempt", "5min"))
+
+    if failed_5m_parts:
+        df["failed_logins_last_5min"]  = pd.concat(failed_5m_parts).reindex(df.index).fillna(0)
+        df["failed_logins_last_15min"] = pd.concat(failed_15m_parts).reindex(df.index).fillna(0)
+        df["_attempts_5m"]             = pd.concat(velocity_parts).reindex(df.index).fillna(0)
+    else:
+        df["failed_logins_last_5min"]  = 0
+        df["failed_logins_last_15min"] = 0
+        df["_attempts_5m"]             = 0
 
     # Login attempt velocity (attempts per minute over 5-min window)
-    df["_attempt"] = 1
-    df["_attempts_5m"] = df.groupby("source_ip", group_keys=False).apply(
-        lambda g: _rolling_count(g, col="_attempt", window="5min")
-    )
     df["login_attempt_velocity"] = df["_attempts_5m"] / 5.0
 
     # Time since last event per source_ip
@@ -202,12 +212,17 @@ def _add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _rolling_count(group: pd.DataFrame, col: str, window: str) -> pd.Series:
-    """Compute a time-based rolling sum for a boolean or integer column."""
+    """Compute a time-based rolling sum for a boolean or integer column.
+
+    Returns a Series aligned to the original group index.
+    """
     if group.empty or col not in group.columns:
-        return pd.Series(0, index=group.index)
+        return pd.Series(0, index=group.index, dtype=float)
     g = group.set_index("timestamp")
     rolled = g[col].astype(float).rolling(window, min_periods=0).sum()
-    return rolled.reset_index(drop=True).set_axis(group.index)
+    # Reset to original index
+    rolled.index = group.index
+    return rolled
 
 
 # ---------------------------------------------------------------------------
@@ -240,8 +255,9 @@ def _add_relationship_features(df: pd.DataFrame) -> pd.DataFrame:
     ip_failure = df.groupby("source_ip")["success"].transform(
         lambda s: (~s.astype(bool)).sum()
     )
-    with pd.option_context("mode.use_inf_as_na", True):
-        df["failure_ratio"] = (ip_failure / ip_total.clip(lower=1)).fillna(0.0)
+    # [DESIGN CHOICE] pandas 2.0 removed `mode.use_inf_as_na` — replace inf directly
+    ratio = (ip_failure / ip_total.clip(lower=1))
+    df["failure_ratio"] = ratio.replace([float("inf"), float("-inf")], float("nan")).fillna(0.0)
 
     # Cross-source activity: same source_ip in 2+ source_types
     cross = (
