@@ -1,0 +1,30 @@
+# AI-Sentinel V3 — Docker Compose Override (Development)
+# Enables hot-reload, mounts source code, and enables debug logging.
+
+version: "3.9"
+
+services:
+  api:
+    command: uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+      - sentinel-data:/app/data
+    environment:
+      - SENTINEL_REQUIRE_TLS=false
+      - PYTHONDONTWRITEBYTECODE=1
+
+  dashboard:
+    command: >
+      streamlit run ai_sentinel/ui/dashboard.py
+      --server.port=8501
+      --server.address=0.0.0.0
+      --server.headless=true
+      --server.runOnSave=true
+      --browser.gatherUsageStats=false
+    volumes:
+      - .:/app
+      - sentinel-data:/app/data
+
+  agent-sim:
+    volumes:
+      - .:/app

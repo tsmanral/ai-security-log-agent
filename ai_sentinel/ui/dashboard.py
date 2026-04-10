@@ -1,13 +1,22 @@
 """
-AI-Sentinel V2 — Streamlit dashboard.
+AI-Sentinel V3 — Streamlit SOC Dashboard.
+
+Navigation root that manages session state, sidebar navigation,
+and routes to all V3 dashboard pages.
 
 Pages:
-    1. 🔑 Login
-    2. 🖥️ My Devices — registered devices, last-seen, status
-    3. 📊 My Activity — per-user event timeline with anomaly highlights
-    4. 🚨 Alerts — anomaly details with 4-layer breakdown
-    5. 🔌 Connect My Device — token generation + one-liner
-    6. 🛠️ Admin / Testing — synthetic data view (optional toggle)
+    1. 🔑 Login / Register
+    2. 🚨 Live Alerts — real-time anomaly feed
+    3. 📊 Analytics — event trends, severity breakdown
+    4. 🖥️ Device Behavior — per-device analytics
+    5. 🧠 Model Analytics — model registry, drift detection
+    6. 🔍 Threat Intel — AbuseIPDB reputation data
+    7. 🔌 Connect My Device — token generation
+    8. 🛠️ Admin — user management, system status
+
+Usage::
+
+    streamlit run ai_sentinel/ui/dashboard.py
 """
 
 import html
@@ -25,6 +34,7 @@ from ai_sentinel.storage.database import (
     get_user_by_username,
     init_db,
 )
+from ai_sentinel.ui.data_layer import get_dashboard_kpis
 
 # ── initialise DB ─────────────────────────────────────────────────────────
 init_db()
@@ -33,109 +43,138 @@ init_db()
 if "user" not in st.session_state:
     st.session_state.user = None
 if "page" not in st.session_state:
-    st.session_state.page = "Login"
+    st.session_state.page = "Live Alerts"
 
 
 # ── sidebar navigation ───────────────────────────────────────────────────
 
 def _sidebar():
     if st.session_state.user:
-        st.sidebar.title(f"👤 {st.session_state.user['username']}")
-        pages = ["My Devices", "My Activity", "Alerts", "Connect My Device", "Admin / Testing"]
-        st.session_state.page = st.sidebar.radio("Navigate", pages)
-        if st.sidebar.button("Logout"):
+        role = st.session_state.user.get("role", "ANALYST")
+        role_badge = {"ADMIN": "🔧", "ANALYST": "🔬", "VIEWER": "👁️"}.get(role, "👤")
+
+        st.sidebar.markdown(
+            f"""
+            <div style="
+                background: linear-gradient(135deg, #1A1F2E, #1E2536);
+                padding: 1rem;
+                border-radius: 8px;
+                margin-bottom: 1rem;
+                border-left: 3px solid #4A9EFF;
+            ">
+                <div style="color:#E0E0E0;font-weight:600;">
+                    {role_badge} {st.session_state.user['username']}
+                </div>
+                <div style="color:#8899AA;font-size:0.8rem;">{role}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        pages = [
+            "🚨 Live Alerts",
+            "📊 Analytics",
+            "🖥️ Device Behavior",
+            "🧠 Model Analytics",
+            "🔍 Threat Intel",
+            "🔌 Connect My Device",
+        ]
+
+        if role == "ADMIN":
+            pages.append("🛠️ Admin")
+
+        selected = st.sidebar.radio("Navigation", pages, label_visibility="collapsed")
+        st.session_state.page = selected
+
+        # Report download
+        st.sidebar.divider()
+        if st.sidebar.button("📄 Export Report", use_container_width=True):
+            _generate_pdf_report()
+
+        st.sidebar.divider()
+        if st.sidebar.button("🚪 Logout", use_container_width=True):
             st.session_state.user = None
+            st.session_state.page = "Login"
             st.rerun()
+
+
+def _generate_pdf_report():
+    """Generate and offer a PDF report for download."""
+    try:
+        from ai_sentinel.ui.data_layer import (
+            get_dashboard_kpis,
+            get_dashboard_open_incidents,
+            get_dashboard_recent_anomalies,
+        )
+        from ai_sentinel.ui.utils.report_generator import generate_report
+
+        kpis = get_dashboard_kpis()
+        incidents = get_dashboard_open_incidents()
+        anomalies = get_dashboard_recent_anomalies(limit=50)
+
+        pdf_bytes = generate_report(
+            title="AI-Sentinel Security Report",
+            kpis=kpis,
+            incidents=incidents,
+            anomalies=anomalies,
+        )
+
+        if pdf_bytes:
+            st.sidebar.download_button(
+                label="⬇️ Download PDF",
+                data=pdf_bytes,
+                file_name=f"ai_sentinel_report_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.pdf",
+                mime="application/pdf",
+            )
+        else:
+            st.sidebar.error("PDF generation failed. Install fpdf2.")
+    except Exception as e:
+        st.sidebar.error(f"Report error: {e}")
 
 
 # ── pages ─────────────────────────────────────────────────────────────────
 
 def page_login():
-    st.title("🔐 AI-Sentinel — Login")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Login"):
-            user = get_user_by_username(username)
-            if user and user["password_hash"] == password:  # TODO: use bcrypt
-                st.session_state.user = user
-                st.session_state.page = "My Devices"
-                st.rerun()
-            else:
-                st.error("Invalid credentials.")
-    with col2:
-        if st.button("Register"):
-            if username and password:
-                try:
-                    uid = str(uuid.uuid4())
-                    create_user(uid, username, password)  # TODO: hash password
-                    st.success("Account created! Please log in.")
-                except Exception as e:
-                    st.error(f"Registration failed: {e}")
-
-
-def page_devices():
-    st.title("🖥️ My Devices")
-    user_id = st.session_state.user["id"]
-    devices = get_devices_for_user(user_id)
-
-    if not devices:
-        st.info("No devices registered. Go to **Connect My Device** to add one!")
-        return
-
-    for d in devices:
-        with st.container():
-            col1, col2, col3 = st.columns([3, 2, 2])
-            col1.markdown(f"**{html.escape(d.get('display_name') or d['hostname'])}**")
-            col2.caption(f"OS: {d['os_type']}  |  ID: `{d['id'][:8]}…`")
-            last_seen = d.get("last_seen_at", "Never")
-            col3.caption(f"Last seen: {last_seen}")
-            st.divider()
-
-
-def page_activity():
-    st.title("📊 My Activity")
-    user_id = st.session_state.user["id"]
-    events = get_events_for_user(user_id, synthetic=False, limit=500)
-
-    if not events:
-        st.info("No events received yet.")
-        return
-
-    st.dataframe(
-        [
-            {
-                "Time": e["timestamp"],
-                "Host": html.escape(e.get("host", "")),
-                "User": html.escape(e.get("effective_username", "")),
-                "IP": e.get("source_ip", ""),
-                "Type": e.get("event_type", ""),
-            }
-            for e in events
-        ],
-        use_container_width=True,
+    st.markdown(
+        """
+        <div style="text-align:center;padding:2rem 0;">
+            <h1 style="color:#4A9EFF;">🛡️ AI-Sentinel</h1>
+            <p style="color:#8899AA;">Enterprise SIEM Platform — V3</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
+    col_spacer1, col_form, col_spacer2 = st.columns([1, 2, 1])
+    with col_form:
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
 
-def page_alerts():
-    st.title("🚨 Alerts")
-    user_id = st.session_state.user["id"]
-    anomalies = get_anomalies_for_user(user_id, synthetic=False)
-
-    if not anomalies:
-        st.success("No anomalies detected 🎉")
-        return
-
-    for a in anomalies:
-        severity = "🔴" if (a.get("layer2_votes", 0) or 0) >= 2 else "🟡"
-        with st.expander(f"{severity} {a.get('threat_type', 'Unknown')} — {a.get('created_at', '')}"):
-            st.markdown(a.get("narrative", "No narrative available."))
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Baseline Z", f"{a.get('layer1_score', 0):.2f}")
-            col2.metric("Ensemble", f"{a.get('layer2_score', 0):.2f}")
-            col3.metric("AE Error", f"{a.get('layer3_score', 0):.4f}")
-            st.caption(f"MITRE: {a.get('mitre_technique', 'N/A')}  |  Device: `{a.get('device_id', '')[:8]}…`")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Login", use_container_width=True):
+                user = get_user_by_username(username)
+                if user:
+                    # Try bcrypt first, then plain-text fallback
+                    from ai_sentinel.auth import verify_password
+                    if verify_password(password, user["password_hash"]):
+                        st.session_state.user = user
+                        st.session_state.page = "🚨 Live Alerts"
+                        st.rerun()
+                    else:
+                        st.error("Invalid credentials.")
+                else:
+                    st.error("Invalid credentials.")
+        with col2:
+            if st.button("Register", use_container_width=True):
+                if username and password:
+                    try:
+                        from ai_sentinel.auth import hash_password
+                        uid = str(uuid.uuid4())
+                        create_user(uid, username, hash_password(password), "ANALYST")
+                        st.success("Account created! Please log in.")
+                    except Exception as e:
+                        st.error(f"Registration failed: {e}")
 
 
 def page_connect():
@@ -164,7 +203,7 @@ def page_connect():
             local_ip = socket.gethostbyname(hostname)
         except Exception:
             local_ip = "127.0.0.1"
-            
+
         server_address = f"http://{local_ip}:8000"
 
         st.subheader("Linux")
@@ -173,56 +212,79 @@ def page_connect():
             language="bash",
         )
 
-        st.subheader("Windows (Future)")
-        st.info("Download the Windows installer MSI (coming soon) and enter the token during setup.")
-
-
-def page_admin():
-    st.title("🛠️ Admin / Testing")
-    user_id = st.session_state.user["id"]
-
-    show_synthetic = st.toggle("Show synthetic data", value=False)
-    anomalies = get_anomalies_for_user(user_id, synthetic=show_synthetic)
-
-    st.subheader(f"Anomalies ({'Synthetic' if show_synthetic else 'Real'})")
-    if anomalies:
-        st.dataframe(
-            [
-                {
-                    "Time": a["created_at"],
-                    "Threat": a.get("threat_type", ""),
-                    "MITRE": a.get("mitre_technique", ""),
-                    "L1 Z": a.get("layer1_score", 0),
-                    "L2 Score": a.get("layer2_score", 0),
-                    "L3 AE": a.get("layer3_score", 0),
-                    "Anomaly": a.get("is_anomaly", False),
-                }
-                for a in anomalies
-            ],
-            use_container_width=True,
+        st.subheader("Windows")
+        st.code(
+            f'python windows_agent_simulator.py',
+            language="bash",
         )
-    else:
-        st.info("No data to show.")
 
 
 # ── main ──────────────────────────────────────────────────────────────────
 
 def main():
-    st.set_page_config(page_title="AI-Sentinel", page_icon="🛡️", layout="wide")
+    st.set_page_config(
+        page_title="AI-Sentinel V3",
+        page_icon="🛡️",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+
+    # Custom CSS for dark SOC theme
+    st.markdown(
+        """
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+            .stApp {
+                font-family: 'Inter', sans-serif;
+            }
+            .block-container {
+                padding-top: 1rem;
+            }
+            [data-testid="stSidebar"] {
+                background: linear-gradient(180deg, #0E1117 0%, #1A1F2E 100%);
+            }
+            .stMetric {
+                background: #1A1F2E;
+                padding: 0.5rem;
+                border-radius: 8px;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     _sidebar()
 
     if not st.session_state.user:
         page_login()
         return
 
-    page_map = {
-        "My Devices": page_devices,
-        "My Activity": page_activity,
-        "Alerts": page_alerts,
-        "Connect My Device": page_connect,
-        "Admin / Testing": page_admin,
-    }
-    page_map.get(st.session_state.page, page_devices)()
+    page = st.session_state.page
+
+    if "Live Alerts" in page:
+        from ai_sentinel.ui.pages.live_alerts import render
+        render()
+    elif "Analytics" in page and "Model" not in page:
+        from ai_sentinel.ui.pages.analytics import render
+        render()
+    elif "Device Behavior" in page:
+        from ai_sentinel.ui.pages.device_behavior import render
+        render()
+    elif "Model Analytics" in page:
+        from ai_sentinel.ui.pages.model_analytics import render
+        render()
+    elif "Threat Intel" in page:
+        from ai_sentinel.ui.pages.threat_intel import render
+        render()
+    elif "Connect My Device" in page:
+        page_connect()
+    elif "Admin" in page:
+        from ai_sentinel.ui.pages.admin import render
+        render()
+    else:
+        from ai_sentinel.ui.pages.live_alerts import render
+        render()
 
 
 if __name__ == "__main__":

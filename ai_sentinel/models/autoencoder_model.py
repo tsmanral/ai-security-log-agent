@@ -1,12 +1,14 @@
 """
-AI-Sentinel V2 — Layer 3: Lightweight autoencoder anomaly detector.
+AI-Sentinel V3 — Layer 3: Lightweight autoencoder anomaly detector.
 
 Trains a small feed-forward autoencoder on normal feature vectors using
 PyTorch (CPU only).  High reconstruction error signals an anomaly.
+Supports persistence via ``torch.save`` / ``torch.load``.
 """
 
 import logging
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -16,6 +18,7 @@ from ai_sentinel.config import (
     AUTOENCODER_LATENT_DIM,
     AUTOENCODER_LR,
     AUTOENCODER_PERCENTILE_THRESHOLD,
+    MODEL_DIR,
 )
 from ai_sentinel.features.feature_extractor import FEATURE_COLS
 
@@ -78,6 +81,7 @@ class AutoencoderModel:
         lr: float = AUTOENCODER_LR,
         threshold_pct: float = AUTOENCODER_PERCENTILE_THRESHOLD,
     ):
+        self.name = "autoencoder"
         self.latent_dim = latent_dim
         self.epochs = epochs
         self.lr = lr
@@ -166,3 +170,65 @@ class AutoencoderModel:
             }
             for e in errors
         ]
+
+    # ── persistence (torch-specific) ──────────────────────────────────────
+
+    def _model_path(self) -> Path:
+        """Return the default file path for persisted autoencoder state."""
+        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        return MODEL_DIR / "autoencoder.pt"
+
+    def save(self, path: Optional[Path] = None) -> Path:
+        """Save the autoencoder state (network weights + normalization params)."""
+        if not _HAS_TORCH or self._net is None:
+            logger.warning("Cannot save autoencoder — not trained or torch unavailable.")
+            return self._model_path()
+
+        target = path or self._model_path()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        state = {
+            "net_state_dict": self._net.state_dict(),
+            "threshold": self._threshold,
+            "mean": self._mean,
+            "std": self._std,
+            "latent_dim": self.latent_dim,
+            "input_dim": self._net.encoder[0].in_features,
+            "threshold_pct": self.threshold_pct,
+            "epochs": self.epochs,
+            "lr": self.lr,
+        }
+        torch.save(state, str(target))
+        logger.info("Autoencoder saved to %s", target)
+        return target
+
+    def load(self, path: Optional[Path] = None) -> bool:
+        """
+        Load persisted autoencoder state.
+
+        Returns True if loaded successfully, False otherwise.
+        """
+        if not _HAS_TORCH:
+            logger.warning("Cannot load autoencoder — torch not available.")
+            return False
+
+        target = path or self._model_path()
+        if not target.exists():
+            logger.info("No persisted autoencoder found at %s", target)
+            return False
+
+        try:
+            state = torch.load(str(target), map_location="cpu", weights_only=False)
+            input_dim = state["input_dim"]
+            self.latent_dim = state["latent_dim"]
+            self._net = _AENet(input_dim, self.latent_dim)
+            self._net.load_state_dict(state["net_state_dict"])
+            self._net.eval()
+            self._threshold = state["threshold"]
+            self._mean = state["mean"]
+            self._std = state["std"]
+            self.is_fitted = True
+            logger.info("Autoencoder loaded from %s", target)
+            return True
+        except Exception:
+            logger.exception("Failed to load autoencoder from %s", target)
+            return False
