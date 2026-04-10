@@ -1,0 +1,75 @@
+# AI-Sentinel V3 — Docker Compose
+# Production configuration with API, Dashboard, and Agent Simulator services.
+
+version: "3.9"
+
+services:
+  # ── API Server ──────────────────────────────────────────────────────────
+  api:
+    build: .
+    container_name: ai-sentinel-api
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      - SENTINEL_API_HOST=0.0.0.0
+      - SENTINEL_API_PORT=8000
+      - SENTINEL_REQUIRE_TLS=${SENTINEL_REQUIRE_TLS:-false}
+      - SENTINEL_JWT_SECRET=${SENTINEL_JWT_SECRET:-changeme-in-production}
+      - SENTINEL_ABUSEIPDB_API_KEY=${SENTINEL_ABUSEIPDB_API_KEY:-}
+      - SENTINEL_MIN_BASELINE_EVENTS=${SENTINEL_MIN_BASELINE_EVENTS:-200}
+      - SENTINEL_RETENTION_DAYS=${SENTINEL_RETENTION_DAYS:-30}
+    volumes:
+      - sentinel-data:/app/data
+      - sentinel-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ── Streamlit Dashboard ─────────────────────────────────────────────────
+  dashboard:
+    build: .
+    container_name: ai-sentinel-dashboard
+    command: >
+      streamlit run ai_sentinel/ui/dashboard.py
+      --server.port=8501
+      --server.address=0.0.0.0
+      --server.headless=true
+      --browser.gatherUsageStats=false
+    ports:
+      - "${DASH_PORT:-8501}:8501"
+    environment:
+      - SENTINEL_JWT_SECRET=${SENTINEL_JWT_SECRET:-changeme-in-production}
+    volumes:
+      - sentinel-data:/app/data
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Agent Simulator ────────────────────────────────────────────────────
+  agent-sim:
+    build: .
+    container_name: ai-sentinel-agent-sim
+    command: >
+      python -c "
+      import time, requests, sys;
+      time.sleep(5);
+      print('Agent sim ready — waiting for manual trigger.');
+      while True: time.sleep(3600)
+      "
+    environment:
+      - SERVER_URL=http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  sentinel-data:
+    driver: local
+  sentinel-logs:
+    driver: local

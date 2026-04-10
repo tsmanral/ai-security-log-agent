@@ -16,6 +16,13 @@ env/
 data/*.db
 data/*.sqlite
 data/*.sqlite3
+data/*.db-shm
+data/*.db-wal
+data/*.sqlite-shm
+data/*.sqlite-wal
+
+# Model artifacts
+data/models/
 
 # Logs and tracking
 logs/*.log
@@ -38,3 +45,14 @@ test_agent_windows.py
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Docker
+.docker/
+
+# PDF reports
+*.pdf

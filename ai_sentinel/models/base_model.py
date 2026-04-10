@@ -1,13 +1,20 @@
 """
-AI-Sentinel V2 — Abstract base class for anomaly detectors.
+AI-Sentinel V3 — Abstract base class for anomaly detectors.
+
+Adds ``save()`` and ``load()`` methods for model persistence via joblib.
 """
 
+import logging
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, Dict, List
 
 import pandas as pd
 
+from ai_sentinel.config import MODEL_DIR
 from ai_sentinel.features.feature_extractor import FEATURE_COLS
+
+logger = logging.getLogger(__name__)
 
 
 class BaseAnomalyDetector(ABC):
@@ -32,3 +39,45 @@ class BaseAnomalyDetector(ABC):
             ``is_anomaly`` (bool), ``anomaly_score`` (float), ``model_name`` (str).
         """
         ...
+
+    # ── persistence ───────────────────────────────────────────────────────
+
+    def _model_path(self) -> Path:
+        """Return the default file path for this model's persisted state."""
+        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        return MODEL_DIR / f"{self.name}.joblib"
+
+    def save(self, path: Path | None = None) -> Path:
+        """
+        Persist the model to disk using joblib.
+
+        Args:
+            path: Optional custom path. Defaults to ``data/models/<name>.joblib``.
+
+        Returns:
+            The path the model was saved to.
+        """
+        import joblib
+
+        target = path or self._model_path()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(self, str(target))
+        logger.info("Model '%s' saved to %s", self.name, target)
+        return target
+
+    @classmethod
+    def load(cls, path: Path) -> "BaseAnomalyDetector":
+        """
+        Load a persisted model from disk.
+
+        Args:
+            path: Path to the .joblib file.
+
+        Returns:
+            The deserialized model instance.
+        """
+        import joblib
+
+        model = joblib.load(str(path))
+        logger.info("Model '%s' loaded from %s", model.name, path)
+        return model
