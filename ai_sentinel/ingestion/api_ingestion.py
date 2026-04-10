@@ -1,8 +1,11 @@
 """
-AI-Sentinel V2 — HTTPS ingestion API.
+AI-Sentinel V3+V4 — HTTPS ingestion API.
 
-FastAPI router that accepts authenticated JSON event batches from endpoint
-agents and triggers near-real-time detection.
+FastAPI router that accepts:
+  V3: authenticated JSON event batches from endpoint agents (unchanged)
+  V4: raw log lines from any supported source via IngestionManager
+
+[V4 ENHANCEMENT — gap: multi-source ingestion]
 """
 
 import logging
@@ -96,7 +99,7 @@ def _authenticate_device(x_device_id: str = Header(...), x_api_key: str = Header
     return device
 
 
-# ── Module-level singleton orchestrator ──────────────────────────────────
+# ── Module-level singleton orchestrator (V3, unchanged) ──────────────────
 # Keep one instance alive so models, baselines, and state persist across calls.
 
 _orchestrator = None
@@ -109,6 +112,22 @@ def _get_orchestrator():
         from ai_sentinel.detection.detection_orchestrator import DetectionOrchestrator
         _orchestrator = DetectionOrchestrator()
     return _orchestrator
+
+
+# ── V4: IngestionManager singleton ────────────────────────────────────────
+# [V4 ENHANCEMENT — gap: multi-source ingestion]
+# [DESIGN CHOICE] Singleton keeps parser chain and stats alive across requests.
+
+_ingest_manager = None
+
+
+def _get_ingest_manager():
+    """Return the singleton IngestionManager, creating it once."""
+    global _ingest_manager
+    if _ingest_manager is None:
+        from ai_sentinel.ingestion.ingestion_manager import IngestionManager
+        _ingest_manager = IngestionManager()
+    return _ingest_manager
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────────
@@ -159,3 +178,144 @@ async def ingest_batch(
         logger.exception("Online detection failed for device %s", device_id)
 
     return {"status": "ok", "events_accepted": count}
+
+
+# ── V4: Raw log ingestion endpoint ────────────────────────────────────────
+# [V4 ENHANCEMENT — gap: multi-source ingestion]
+
+
+class RawLogLine(BaseModel):
+    """Schema for a single raw log line from any supported source."""
+
+    raw_line: str = Field(..., max_length=MAX_RAW_MESSAGE_LENGTH)
+    source_hint: Optional[str] = Field(
+        default=None,
+        description="Optional parser hint: ssh|syslog|windows|network|endpoint",
+    )
+
+
+class RawLogBatch(BaseModel):
+    """Batch of raw log lines from one device."""
+
+    lines: List[RawLogLine] = Field(..., max_length=MAX_EVENTS_PER_BATCH)
+
+
+@router.post("/raw", summary="[V4] Ingest raw log lines via IngestionManager")
+async def ingest_raw_batch(
+    batch: RawLogBatch,
+    device: Dict[str, Any] = Depends(_authenticate_device),
+) -> Dict[str, Any]:
+    """
+    Accept a batch of raw log lines from any supported source.
+
+    Routes each line through the V4 IngestionManager for auto-detection
+    and parsing, then stores the resulting unified events and triggers
+    enhanced feature extraction before online detection.
+
+    [V4 ENHANCEMENT — gap: multi-source ingestion]
+    [GLASSWING ALIGNMENT — central ingestion orchestrator]
+
+    Args:
+        batch:  Batch of raw log lines with optional source_hint.
+        device: Authenticated device record (from device headers).
+
+    Returns:
+        status, accepted count, parse error count, per-source breakdown.
+    """
+    device_id: str = device["id"]
+    user_id:   str = device["user_id"]
+
+    _check_rate_limit(device_id)
+
+    manager  = _get_ingest_manager()
+    accepted = 0
+    parse_errors = 0
+    source_counts: Dict[str, int] = {}
+
+    db_rows: List[Dict[str, Any]] = []
+    v4_events: List[Dict[str, Any]] = []
+
+    for line_obj in batch.lines:
+        try:
+            event = manager.ingest_line(
+                raw_line=line_obj.raw_line,
+                device_id=device_id,
+                hint=line_obj.source_hint,
+            )
+            if event is None:
+                parse_errors += 1
+                continue
+
+            # Map V4 event schema to V3 DB row schema
+            db_row = {
+                "timestamp":          event.get("timestamp"),
+                "device_id":          device_id,
+                "user_id":            user_id,
+                "host":               event.get("device_id", ""),
+                "effective_username": event.get("username") or "",
+                "source_ip":          event.get("source_ip"),
+                "event_type":         event.get("event_type"),
+                "raw_message":        event.get("raw", "")[:MAX_RAW_MESSAGE_LENGTH],
+                "attributes":         event.get("extra", {}),
+                "is_synthetic":       False,
+            }
+            db_rows.append(db_row)
+            v4_events.append(event)
+            accepted += 1
+
+            src = event.get("source_type", "unknown")
+            source_counts[src] = source_counts.get(src, 0) + 1
+        except Exception:
+            logger.exception("[V4] Failed to ingest raw line: %.120s", line_obj.raw_line)
+            parse_errors += 1
+
+    if db_rows:
+        insert_events_batch(db_rows)
+        touch_device(device_id)
+        logger.info(
+            "[V4] Ingested %d events from device %s (errors: %d, sources: %s)",
+            accepted, device_id, parse_errors, source_counts,
+        )
+
+    # ── V4 enhanced feature extraction (graceful degradation) ────────────
+    # [V4 ENHANCEMENT — gap: temporal + relationship features]
+    if v4_events:
+        try:
+            import pandas as pd
+            from ai_sentinel.features.feature_extractor import build_enhanced_feature_table
+
+            df = pd.DataFrame(v4_events)
+            df = build_enhanced_feature_table(df)
+            logger.debug("[V4] Feature extraction complete for %d events.", len(df))
+        except Exception:
+            logger.exception("[V4] Enhanced feature extraction failed — using V3 pipeline.")
+
+    # ── V3 online detection (preserved) ──────────────────────────────────
+    try:
+        orchestrator = _get_orchestrator()
+        orchestrator.run_for_new_events(device_id=device_id)
+    except Exception:
+        logger.exception("Online detection failed for device %s", device_id)
+
+    return {
+        "status":       "ok",
+        "accepted":     accepted,
+        "parse_errors": parse_errors,
+        "source_breakdown": source_counts,
+    }
+
+
+@router.get("/stats", summary="[V4] Get ingestion statistics by source type")
+async def get_ingest_stats(
+    device: Dict[str, Any] = Depends(_authenticate_device),
+) -> Dict[str, Any]:
+    """
+    Return per-source ingestion statistics from the IngestionManager.
+
+    [V4 ENHANCEMENT — gap: ingestion health monitoring]
+
+    Returns:
+        Dict of source_type → {events, errors, last_event}.
+    """
+    manager = _get_ingest_manager()
+    return {"status": "ok", "stats": manager.get_source_stats()}
