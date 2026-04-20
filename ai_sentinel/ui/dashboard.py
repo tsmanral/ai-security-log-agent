@@ -1,10 +1,11 @@
 """
-AI-Sentinel V3 — Streamlit SOC Dashboard.
+AI-Sentinel V3+V4 — Streamlit SOC Dashboard.
 
 Navigation root that manages session state, sidebar navigation,
-and routes to all V3 dashboard pages.
+and routes to all V3 + V4 dashboard pages.
 
 Pages:
+    V3:
     1. 🔑 Login / Register
     2. 🚨 Live Alerts — real-time anomaly feed
     3. 📊 Analytics — event trends, severity breakdown
@@ -13,6 +14,10 @@ Pages:
     6. 🔍 Threat Intel — AbuseIPDB reputation data
     7. 🔌 Connect My Device — token generation
     8. 🛠️ Admin — user management, system status
+    V4 (new):
+    9. 🔎 Investigate — case file generator + entity timeline
+   10. 🌐 Multi-Source — ingestion health + cross-source tracker
+   11. 📊 Feedback — FP review + threshold tuning
 
 Usage::
 
@@ -78,6 +83,10 @@ def _sidebar():
             "🧠 Model Analytics",
             "🔍 Threat Intel",
             "🔌 Connect My Device",
+            # ─ V4 NEW PAGES ─
+            "🔎 Investigate",
+            "🌐 Multi-Source",
+            "📊 Feedback",
         ]
 
         if role == "ADMIN":
@@ -223,7 +232,7 @@ def page_connect():
 
 def main():
     st.set_page_config(
-        page_title="AI-Sentinel V3",
+        page_title="AI-Sentinel V4",
         page_icon="🛡️",
         layout="wide",
         initial_sidebar_state="expanded",
@@ -279,6 +288,18 @@ def main():
         render()
     elif "Connect My Device" in page:
         page_connect()
+    elif "Investigate" in page:
+        # [V4 ENHANCEMENT — gap: analyst investigation interface]
+        from ai_sentinel.ui.pages.investigate import render
+        render()
+    elif "Multi-Source" in page:
+        # [V4 ENHANCEMENT — gap: multi-source visibility]
+        from ai_sentinel.ui.pages.multi_source import render
+        render()
+    elif "Feedback" in page:
+        # [V4 ENHANCEMENT — gap: analyst feedback loop]
+        from ai_sentinel.ui.pages.feedback import render
+        render()
     elif "Admin" in page:
         from ai_sentinel.ui.pages.admin import render
         render()

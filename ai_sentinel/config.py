@@ -122,3 +122,48 @@ METRICS_AGGREGATION_INTERVAL_MINUTES: int = int(
 # ---------------------------------------------------------------------------
 RETENTION_DAYS: int = int(os.getenv("SENTINEL_RETENTION_DAYS", "30"))
 DATA_RETENTION_DAYS: int = RETENTION_DAYS  # alias
+
+# ---------------------------------------------------------------------------
+# V4 Configuration Keys
+# [V4 ENHANCEMENT — gap: multi-source ingestion, dynamic severity, FP tuning]
+# ---------------------------------------------------------------------------
+
+# Ingestion parser chain: maximum bytes stored per raw log line
+MAX_RAW_LINE_LENGTH: int = int(os.getenv("SENTINEL_V4_MAX_RAW_LINE", "2048"))
+
+# Ingestion health monitoring: minutes of silence before a source is flagged
+INGESTION_SILENCE_THRESHOLD_MINUTES: int = int(
+    os.getenv("SENTINEL_V4_SILENCE_THRESHOLD_MINUTES", "30")
+)
+
+# Lateral movement detection: look-back window
+LATERAL_MOVEMENT_WINDOW_MINUTES: int = int(
+    os.getenv("SENTINEL_V4_LAT_MOV_WINDOW_MINUTES", "30")
+)
+
+# Cross-source correlation: number of source types before elevation
+CROSS_SOURCE_ELEVATION_THRESHOLD: int = int(
+    os.getenv("SENTINEL_V4_CROSS_SOURCE_ELEVATION", "2")
+)
+
+# V4 dynamic severity score thresholds (override SEVERITY_THRESHOLDS for V4 rules)
+V4_SEVERITY_THRESHOLDS: dict = {
+    "CRITICAL": float(os.getenv("SENTINEL_V4_SEV_CRITICAL", "0.75")),
+    "HIGH":     float(os.getenv("SENTINEL_V4_SEV_HIGH",     "0.50")),
+    "MEDIUM":   float(os.getenv("SENTINEL_V4_SEV_MEDIUM",   "0.25")),
+}
+
+# Brute force rule thresholds (tunable by analyst feedback)
+BRUTE_FORCE_5MIN_CRITICAL: int = int(os.getenv("SENTINEL_V4_BF_5MIN_CRITICAL", "15"))
+BRUTE_FORCE_5MIN_HIGH:     int = int(os.getenv("SENTINEL_V4_BF_5MIN_HIGH",     "5"))
+BRUTE_FORCE_15MIN_MEDIUM:  int = int(os.getenv("SENTINEL_V4_BF_15MIN_MED",     "8"))
+
+# Port scan thresholds
+PORT_SCAN_CRITICAL_THRESHOLD: int = int(os.getenv("SENTINEL_V4_PORT_SCAN_CRITICAL", "50"))
+PORT_SCAN_HIGH_THRESHOLD:     int = int(os.getenv("SENTINEL_V4_PORT_SCAN_HIGH",     "15"))
+
+# Large data transfer threshold (bytes)
+LARGE_TRANSFER_BYTES: int = int(os.getenv("SENTINEL_V4_LARGE_TRANSFER_BYTES", "10000000"))
+
+# Analyst feedback: maximum FP patterns to load for threshold tuning
+MAX_FP_PATTERNS_FOR_TUNING: int = int(os.getenv("SENTINEL_V4_MAX_FP_PATTERNS", "100"))

@@ -1,9 +1,16 @@
 """
-AI-Sentinel V3 — SQLite storage layer.
+AI-Sentinel V3+V4 — SQLite storage layer.
 
 Manages the database lifecycle via migrations, provides CRUD helpers for
 users, devices, events, anomalies, incidents, heartbeats, model registry,
 metrics, threat intel, and feature drift.
+
+V4 additions (all new functions — none of the V3 functions modified):
+  - store_feedback()
+  - get_false_positive_patterns()
+  - get_fp_rate_by_source_type()
+  - update_ingestion_stats()
+  - get_ingestion_stats()
 """
 
 import json
@@ -25,7 +32,7 @@ def get_connection() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")      # better concurrent reads
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
@@ -714,12 +721,12 @@ def upsert_metrics_5min(
             avg_severity, max_severity, unique_ips, unique_users)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(device_id, window_start) DO UPDATE SET
-               event_count  = excluded.event_count,
+               event_count   = excluded.event_count,
                anomaly_count = excluded.anomaly_count,
-               avg_severity = excluded.avg_severity,
-               max_severity = excluded.max_severity,
-               unique_ips   = excluded.unique_ips,
-               unique_users = excluded.unique_users""",
+               avg_severity  = excluded.avg_severity,
+               max_severity  = excluded.max_severity,
+               unique_ips    = excluded.unique_ips,
+               unique_users  = excluded.unique_users""",
         (device_id, window_start, event_count, anomaly_count,
          avg_severity, max_severity, unique_ips, unique_users),
     )
@@ -911,6 +918,190 @@ def cleanup_old_data() -> int:
     conn.close()
     logger.info("Retention cleanup: removed %d events older than %s", events_deleted, cutoff)
     return events_deleted
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  V4 ADDITIONS: feedback and ingestion stats
+# ══════════════════════════════════════════════════════════════════════════
+
+# [V4 ENHANCEMENT — gap: analyst feedback loop]
+
+
+def store_feedback(
+    db_conn: Optional[sqlite3.Connection],
+    alert_id: int,
+    label: str,
+    analyst_note: str,
+    fp_pattern: str,
+    suggested_thresholds: Dict[str, Any],
+    source_type: str,
+) -> None:
+    """
+    Persist analyst feedback to the alerts_feedback table.
+
+    [V4 ENHANCEMENT — gap: analyst feedback loop]
+
+    Args:
+        db_conn:              Optional existing DB connection (creates new if None).
+        alert_id:             anomalies.id of the alert being labelled.
+        label:                'true_positive' or 'false_positive'.
+        analyst_note:         Free-text analyst note.
+        fp_pattern:           FP pattern from analyze_false_positive().
+        suggested_thresholds: Dict of suggested threshold changes (stored as JSON).
+        source_type:          Source type of the triggering event.
+    """
+    own_conn = db_conn is None
+    conn = get_connection() if own_conn else db_conn
+    try:
+        conn.execute(
+            """INSERT INTO alerts_feedback
+               (alert_id, label, analyst_note, fp_pattern,
+                suggested_thresholds, source_type)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                alert_id, label, analyst_note, fp_pattern,
+                json.dumps(suggested_thresholds), source_type,
+            ),
+        )
+        conn.commit()
+    finally:
+        if own_conn:
+            conn.close()
+
+
+def get_false_positive_patterns(
+    db_conn: Optional[sqlite3.Connection] = None, limit: int = 50
+) -> List[Dict[str, Any]]:
+    """
+    Retrieve recent false-positive labels with their pattern analysis.
+
+    [V4 ENHANCEMENT — gap: analyst feedback loop]
+
+    Args:
+        db_conn: Optional existing connection.
+        limit:   Maximum rows to return.
+
+    Returns:
+        List of feedback dicts for FP-labelled alerts.
+    """
+    own_conn = db_conn is None
+    conn = get_connection() if own_conn else db_conn
+    try:
+        rows = conn.execute(
+            """SELECT * FROM alerts_feedback
+               WHERE label = 'false_positive'
+               ORDER BY created_at DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        if own_conn:
+            conn.close()
+
+
+def get_fp_rate_by_source_type(
+    db_conn: Optional[sqlite3.Connection] = None,
+) -> Dict[str, float]:
+    """
+    Calculate the false-positive rate per ingestion source type.
+
+    SQL: COUNT(FP) / COUNT(total) GROUP BY source_type
+
+    [V4 ENHANCEMENT — gap: analyst feedback loop]
+
+    Args:
+        db_conn: Optional existing connection.
+
+    Returns:
+        Dict mapping source_type → fp_rate (0.0 – 1.0).
+    """
+    own_conn = db_conn is None
+    conn = get_connection() if own_conn else db_conn
+    try:
+        rows = conn.execute(
+            """SELECT source_type,
+                      COUNT(CASE WHEN label = 'false_positive' THEN 1 END) AS fp_count,
+                      COUNT(*) AS total_count
+               FROM alerts_feedback
+               WHERE source_type IS NOT NULL
+               GROUP BY source_type"""
+        ).fetchall()
+        result: Dict[str, float] = {}
+        for row in rows:
+            d = dict(row)
+            total = d.get("total_count", 0) or 1
+            result[d["source_type"]] = round(d.get("fp_count", 0) / total, 4)
+        return result
+    finally:
+        if own_conn:
+            conn.close()
+
+
+def update_ingestion_stats(
+    db_conn: Optional[sqlite3.Connection],
+    source_type: str,
+    events: int,
+    errors: int,
+) -> None:
+    """
+    Upsert ingestion statistics for a source type.
+
+    [V4 ENHANCEMENT — gap: ingestion health monitoring]
+
+    Args:
+        db_conn:     Optional existing connection.
+        source_type: Ingestion source identifier.
+        events:      Number of successfully parsed events.
+        errors:      Number of parse errors.
+    """
+    own_conn = db_conn is None
+    conn = get_connection() if own_conn else db_conn
+    try:
+        now = datetime.utcnow().isoformat()
+        conn.execute(
+            """INSERT INTO ingestion_stats
+               (source_type, events_count, parse_errors, last_event, updated_at)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(source_type) DO UPDATE SET
+                   events_count = events_count + excluded.events_count,
+                   parse_errors = parse_errors + excluded.parse_errors,
+                   last_event   = CASE WHEN excluded.events_count > 0
+                                       THEN excluded.last_event
+                                       ELSE last_event END,
+                   updated_at   = excluded.updated_at""",
+            (source_type, events, errors, now if events > 0 else None, now),
+        )
+        conn.commit()
+    finally:
+        if own_conn:
+            conn.close()
+
+
+def get_ingestion_stats(
+    db_conn: Optional[sqlite3.Connection] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Return ingestion health stats per source type for the dashboard.
+
+    [V4 ENHANCEMENT — gap: ingestion health monitoring]
+
+    Args:
+        db_conn: Optional existing connection.
+
+    Returns:
+        List of stats dicts: source_type, events_count, parse_errors,
+        last_event, updated_at.
+    """
+    own_conn = db_conn is None
+    conn = get_connection() if own_conn else db_conn
+    try:
+        rows = conn.execute(
+            "SELECT * FROM ingestion_stats ORDER BY events_count DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        if own_conn:
+            conn.close()
 
 
 # ── direct-run bootstrap ─────────────────────────────────────────────────
