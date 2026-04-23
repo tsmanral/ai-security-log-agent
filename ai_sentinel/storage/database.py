@@ -494,14 +494,15 @@ def create_incident(
     attack_type: str,
     severity_label: str,
     first_seen: str,
+    playbook: Optional[str] = None,
 ) -> int:
     """Create a new incident. Returns the incident ID."""
     conn = get_connection()
     cur = conn.execute(
         """INSERT INTO incidents
-           (device_id, source_ip, attack_type, severity_label, first_seen, last_seen)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (device_id, source_ip, attack_type, severity_label, first_seen, first_seen),
+           (device_id, source_ip, attack_type, severity_label, first_seen, last_seen, playbook)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (device_id, source_ip, attack_type, severity_label, first_seen, first_seen, playbook),
     )
     incident_id = cur.lastrowid
     conn.commit()
@@ -586,20 +587,31 @@ def get_open_incidents(limit: int = 100) -> List[Dict[str, Any]]:
 
 
 def get_all_incidents(
-    status: Optional[str] = None, limit: int = 200
+    status: Optional[str] = None, limit: int = 200, user_id: Optional[str] = None
 ) -> List[Dict[str, Any]]:
-    """Return incidents, optionally filtered by status."""
+    """Return incidents, optionally filtered by status and user_id."""
     conn = get_connection()
+    query = "SELECT i.* FROM incidents i"
+    params: List[Any] = []
+    
+    if user_id:
+        query += " JOIN devices d ON i.device_id = d.id"
+        
+    conditions = []
     if status:
-        rows = conn.execute(
-            "SELECT * FROM incidents WHERE status = ? ORDER BY last_seen DESC LIMIT ?",
-            (status, limit),
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            "SELECT * FROM incidents ORDER BY last_seen DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
+        conditions.append("i.status = ?")
+        params.append(status)
+    if user_id:
+        conditions.append("d.user_id = ?")
+        params.append(user_id)
+        
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+        
+    query += " ORDER BY i.last_seen DESC LIMIT ?"
+    params.append(limit)
+    
+    rows = conn.execute(query, tuple(params)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 

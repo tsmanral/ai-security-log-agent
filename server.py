@@ -1,20 +1,12 @@
 """
 AI-Sentinel V3 — FastAPI server (primary V3 entrypoint).
-
-Mounts all routers (ingestion, device registration, incidents, heartbeats,
-admin), applies TLS and CORS middleware, manages model lifecycle, and
-integrates the background job scheduler.
-
-Usage::
-
-    uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 """
 
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,52 +35,32 @@ from ai_sentinel.storage.database import (
     assign_incident as db_assign_incident,
 )
 from ai_sentinel.tls_middleware import TLSEnforcementMiddleware
+from ai_sentinel.ui.api_dashboard import router as dashboard_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 
-# ── lifespan (startup / shutdown) ─────────────────────────────────────────
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifecycle: init DB and start scheduler on startup."""
+    """Lifecycle events for FastAPI."""
+    logger.info("Initializing AI-Sentinel V3 Backend...")
     init_db()
-    logger.info("V3 database initialized.")
-
-    # Start background scheduler
-    try:
-        from ai_sentinel.jobs.scheduler import start_scheduler, stop_scheduler
-        start_scheduler()
-        logger.info("Background job scheduler started.")
-    except Exception:
-        logger.warning("Background scheduler not available — jobs will not run.")
-
+    Path("data/models").mkdir(parents=True, exist_ok=True)
     yield
+    logger.info("Shutting down AI-Sentinel V3 Backend...")
 
-    # Shutdown
-    try:
-        from ai_sentinel.jobs.scheduler import stop_scheduler
-        stop_scheduler()
-        logger.info("Background job scheduler stopped.")
-    except Exception:
-        pass
-
-
-# ── FastAPI app ───────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="AI-Sentinel V3 API",
-    version="3.0.0",
-    description=(
-        "Real-time ingestion, device onboarding, ML detection, incident management, "
-        "and threat intelligence API for the AI-Sentinel SIEM platform."
-    ),
     lifespan=lifespan,
 )
 
-# Middleware
-app.add_middleware(TLSEnforcementMiddleware)
+# ── Middleware ────────────────────────────────────────────────────────────
+
+if REQUIRE_TLS:
+    app.add_middleware(TLSEnforcementMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -97,37 +69,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount API routers
-app.include_router(events_router)
-app.include_router(devices_router)
+# ── Static Files ─────────────────────────────────────────────────────────
 
-# Serve static files (e.g., installer script for agents)
 STATIC_DIR = Path(__file__).parent / "ai_sentinel" / "onboarding"
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# Serve the endpoint agent script
 AGENT_DIR = Path(__file__).parent / "ai_sentinel" / "endpoint_agent"
 if AGENT_DIR.exists():
     app.mount("/agent", StaticFiles(directory=str(AGENT_DIR)), name="agent")
 
 
-# ── Health endpoints ─────────────────────────────────────────────────────
+# ── Routers ──────────────────────────────────────────────────────────────
+
+app.include_router(events_router, prefix="/api/events")
+app.include_router(devices_router, prefix="/api/devices")
+app.include_router(dashboard_router, prefix="/api/dashboard")
 
 
-@app.get("/", tags=["health"])
-async def health():
-    """Simple health check."""
+# ── Utility endpoints ───────────────────────────────────────────────────
+
+
+@app.get("/", tags=["system"])
+async def root():
     return {
-        "status": "ok",
-        "version": "3.0.0",
-        "tls_enforced": REQUIRE_TLS,
+        "service": "AI-Sentinel V3 Core",
+        "timestamp": datetime.now().isoformat(),
+        "status": "online",
     }
 
 
 @app.get("/api/health", tags=["health"])
 async def api_health():
-    """API health endpoint."""
     return {"status": "ok", "service": "ai-sentinel-api", "version": "3.0.0"}
 
 
@@ -148,7 +121,6 @@ class TokenResponse(BaseModel):
 
 @app.post("/api/auth/login", response_model=TokenResponse, tags=["auth"])
 async def login(req: LoginRequest):
-    """Authenticate and return a JWT access token."""
     user = get_user_by_username(req.username)
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials.")
@@ -164,6 +136,25 @@ async def login(req: LoginRequest):
         user_id=user["id"],
     )
 
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
+@app.post("/api/auth/register", tags=["auth"])
+async def register(req: RegisterRequest):
+    from ai_sentinel.storage.database import create_user
+    from ai_sentinel.auth import hash_password
+    import uuid
+
+    existing = get_user_by_username(req.username)
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already taken.")
+
+    role = "ADMIN" if req.username.lower() == "admin" else "ANALYST"
+    uid = str(uuid.uuid4())
+    create_user(uid, req.username, hash_password(req.password), role)
+    return {"status": "ok", "user_id": uid, "role": role}
+
 
 # ── Heartbeat endpoint ─────────────────────────────────────────────────
 
@@ -177,7 +168,6 @@ class HeartbeatRequest(BaseModel):
 
 @app.post("/heartbeat", tags=["heartbeat"])
 async def heartbeat(req: HeartbeatRequest):
-    """Record a heartbeat from an endpoint agent."""
     device = get_device(req.device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Unknown device.")
@@ -190,7 +180,6 @@ async def heartbeat(req: HeartbeatRequest):
     )
     touch_device(req.device_id)
 
-    # Ensure device is not marked OFFLINE
     if device.get("status") == "OFFLINE":
         update_device_status(req.device_id, "ONLINE")
 
@@ -201,7 +190,7 @@ async def heartbeat(req: HeartbeatRequest):
 
 
 class IncidentStatusRequest(BaseModel):
-    status: str  # OPEN | INVESTIGATING | RESOLVED | FALSE_POSITIVE
+    status: str
     notes: str = ""
 
 
@@ -209,35 +198,26 @@ class IncidentAssignRequest(BaseModel):
     user_id: str
 
 
-@app.post("/incidents/{incident_id}/status", tags=["incidents"])
+@app.post("/api/incidents/{incident_id}/status", tags=["incidents"])
 async def update_incident(
     incident_id: int,
     req: IncidentStatusRequest,
     user: dict = Depends(require_role("ADMIN", "ANALYST")),
 ):
-    """Update the status of an incident. Requires ADMIN or ANALYST role."""
     incident = get_incident(incident_id)
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found.")
-
-    valid_statuses = {"OPEN", "INVESTIGATING", "RESOLVED", "FALSE_POSITIVE"}
-    if req.status not in valid_statuses:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}.",
-        )
 
     update_incident_status(incident_id, req.status, req.notes)
     return {"status": "ok", "incident_id": incident_id, "new_status": req.status}
 
 
-@app.post("/incidents/{incident_id}/assign", tags=["incidents"])
+@app.post("/api/incidents/{incident_id}/assign", tags=["incidents"])
 async def assign_incident(
     incident_id: int,
     req: IncidentAssignRequest,
     user: dict = Depends(require_role("ADMIN", "ANALYST")),
 ):
-    """Assign an incident to a user. Requires ADMIN or ANALYST role."""
     incident = get_incident(incident_id)
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found.")
@@ -250,10 +230,10 @@ async def assign_incident(
 async def list_incidents(
     status: Optional[str] = None,
     limit: int = 100,
-    user: dict = Depends(require_role("ADMIN", "ANALYST")),
+    user: dict = Depends(require_role("ADMIN", "ANALYST", "VIEWER")),
 ):
-    """List incidents, optionally filtered by status."""
-    incidents = get_all_incidents(status=status, limit=limit)
+    uid = user["user_id"] if user["role"] != "ADMIN" else None
+    incidents = get_all_incidents(status=status, limit=limit, user_id=uid)
     return {"incidents": incidents, "count": len(incidents)}
 
 
@@ -265,11 +245,6 @@ async def retrain_models(
     background_tasks: BackgroundTasks,
     user: dict = Depends(require_role("ADMIN")),
 ):
-    """
-    Trigger a full model retrain in the background.
-    Requires ADMIN role.
-    """
-
     def _do_retrain():
         try:
             from ai_sentinel.detection.detection_orchestrator import DetectionOrchestrator
@@ -283,20 +258,25 @@ async def retrain_models(
             conn.close()
 
             if not rows:
-                logger.warning("No events found for retraining.")
                 return
 
-            events = [dict(r) for r in rows]
-            df = build_features(events)
+            df = build_features([dict(r) for r in rows])
             if df.empty:
-                logger.warning("Feature extraction returned empty DataFrame.")
                 return
 
             orchestrator = DetectionOrchestrator()
             orchestrator.train(df)
-            logger.info("Model retrain completed successfully (%d events).", len(df))
+            logger.info("Model retrain completed.")
         except Exception:
             logger.exception("Model retrain failed.")
 
     background_tasks.add_task(_do_retrain)
-    return {"status": "accepted", "message": "Model retrain started in background."}
+    return {"status": "accepted", "message": "Started."}
+
+
+from ai_sentinel.ui.api_dashboard import router as dashboard_router
+app.include_router(dashboard_router, prefix="/api/dashboard")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -47,6 +47,13 @@ def evaluate_rules(feature_row: Dict[str, Any]) -> Tuple[str, str]:
     off_hours  = int(feature_row.get("is_off_hours", 0))
     fail_ratio = float(feature_row.get("failure_ratio_15m", 0))
 
+    # [V4 DEMO RULES] — Force detection of specific high-risk event types
+    event_type = str(feature_row.get("event_type", ""))
+    if event_type == "sudo_command":
+        return "Unauthorized Privilege Escalation", "T1068"
+    if event_type == "ssh_failed_password":
+        return "SSH Brute Force", "T1110.001"
+
     if failures > 15 and users > 5:
         return "Credential Stuffing", "T1110.004"
     if failures > 20 and users <= 3:

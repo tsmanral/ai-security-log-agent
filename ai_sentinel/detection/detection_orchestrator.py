@@ -251,7 +251,14 @@ class DetectionOrchestrator:
                 or l3[i].get("is_ae_anomaly", False)
             )
 
-            threat_type, mitre_id = evaluate_rules(row.to_dict()) if is_anomaly else ("None", "N/A")
+            # [DEMO FIX] Force anomaly status if rule engine finds a critical event type
+            threat_type, mitre_id = evaluate_rules(row.to_dict())
+            if threat_type != "None":
+                is_anomaly = True
+            
+            if not is_anomaly:
+                threat_type = "None"
+                mitre_id = "N/A"
 
             # Compute severity
             layer1_z = l1[i].get("z_max", 0.0)

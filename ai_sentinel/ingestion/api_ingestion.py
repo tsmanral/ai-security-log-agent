@@ -32,7 +32,7 @@ from ai_sentinel.storage.database import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/events", tags=["ingestion"])
+router = APIRouter(tags=["ingestion"])
 
 # ── Pydantic models ───────────────────────────────────────────────────────
 

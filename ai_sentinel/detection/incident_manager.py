@@ -74,12 +74,21 @@ class IncidentManager:
                 anomaly_id, incident_id, attack_type, source_ip,
             )
         else:
+            # [V4 DEMO ENHANCEMENT] — Auto-assign playbooks based on attack type
+            playbook_map = {
+                "Unauthorized Privilege Escalation": "AD_ELEVATION_RESPONSE",
+                "SSH Brute Force": "BRUTE_FORCE_RESPONSE",
+                "Ransomware Activity": "RANSOMWARE_RESPONSE",
+            }
+            assigned_playbook = playbook_map.get(attack_type)
+
             incident_id = create_incident(
                 device_id=device_id,
                 source_ip=source_ip,
                 attack_type=attack_type,
                 severity_label=severity_label,
                 first_seen=created_at,
+                playbook=assigned_playbook,
             )
             logger.info(
                 "New incident %d created: %s from %s on device %s",
