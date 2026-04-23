@@ -24,8 +24,8 @@ api.interceptors.request.use(
 
 // ── Live simulation counters ──────────────────────────────────────────────────
 let _liveEventCount = 1543290;
-let _liveAnomCount  = 342;
-let _lastTick       = Date.now();
+let _liveAnomCount = 342;
+let _lastTick = Date.now();
 
 const tickLive = () => {
   const elapsedSec = (Date.now() - _lastTick) / 1000;
@@ -36,8 +36,8 @@ const tickLive = () => {
 
 export const getLiveStats = () => ({ events: _liveEventCount, anomalies: _liveAnomCount });
 
-const EVENT_TYPES = ['Failed Login','Port Scan','Lateral Movement','Data Exfil','Privilege Escalation','Malware C2','Brute Force','Policy Violation','DNS Tunneling','Ransomware Beacon','Outbound 443','SMB Traversal','SQL Injection','ARP Spoof','Token Hijack'];
-const SEVERITIES  = ['CRITICAL','HIGH','HIGH','MEDIUM','MEDIUM','MEDIUM','LOW','LOW'];
+const EVENT_TYPES = ['Failed Login', 'Port Scan', 'Lateral Movement', 'Data Exfil', 'Privilege Escalation', 'Malware C2', 'Brute Force', 'Policy Violation', 'DNS Tunneling', 'Ransomware Beacon', 'Outbound 443', 'SMB Traversal', 'SQL Injection', 'ARP Spoof', 'Token Hijack'];
+const SEVERITIES = ['CRITICAL', 'HIGH', 'HIGH', 'MEDIUM', 'MEDIUM', 'MEDIUM', 'LOW', 'LOW'];
 
 export const generateEventStream = (count = 200, deviceFilter?: string[]): any[] => {
   if (!isTestUser()) return [];
@@ -45,8 +45,9 @@ export const generateEventStream = (count = 200, deviceFilter?: string[]): any[]
   for (let i = 0; i < count; i++) {
     const sev = SEVERITIES[Math.floor(Math.random() * SEVERITIES.length)];
     const type = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
+    if (deviceFilter && deviceFilter.length === 0) return []; // STRICT: No devices = no events
     const host = deviceFilter ? deviceFilter[Math.floor(Math.random() * deviceFilter.length)] : `SRV-${100 + Math.floor(Math.random() * 899)}`;
-    
+
     rows.push({
       id: 1000000 + i,
       timestamp: new Date(Date.now() - Math.random() * 3600000).toISOString(),
@@ -216,14 +217,12 @@ export const MOCK_ENTITIES: Record<string, any> = {
 
 // Extended entity lookup — all pivot nodes clickable in the graph
 const EXTRA_ENTITIES: Record<string, any> = {
-  'WKS-112-X': { entity:'WKS-112-X', type:'Host', risk_score:95, source_ip:'10.0.5.22', attack_type:'Ransomware Victim', related_incidents:['inc_101'], affected_users:['CORP\\jsmith'], related_events:[{ id:1, timestamp:new Date(Date.now()-5400000).toISOString(), type:'Mass File Encryption', source:'EDR', severity:'CRITICAL', detail:'4,231 files encrypted in 90s on WKS-112-X' }, { id:2, timestamp:new Date(Date.now()-4900000).toISOString(), type:'Ransomware Note Dropped', source:'EDR', severity:'CRITICAL', detail:'README_HOW_TO_DECRYPT.txt created in 28 directories' }], relationships:[{ type:'User Session', target:'CORP\\jsmith', iconType:'user' }, { type:'Source IP', target:'10.0.5.22', iconType:'network' }, { type:'C2 Contact', target:'185.15.202.13', iconType:'globe' }], playbook:'RANSOMWARE_RESPONSE' },
-  'FILE-SRV-01': { entity:'FILE-SRV-01', type:'Server', risk_score:82, source_ip:'10.0.0.10', attack_type:'Ransomware Target', related_incidents:['inc_101'], affected_users:['CORP\\jsmith'], related_events:[{ id:1, timestamp:new Date(Date.now()-5200000).toISOString(), type:'SMB Share Traversal', source:'Network Flow', severity:'HIGH', detail:'Lateral access to \\\\FILE-SRV-01\\shares\\finance\\*' }, { id:2, timestamp:new Date(Date.now()-5000000).toISOString(), type:'Mass File Modification', source:'EDR', severity:'CRITICAL', detail:'1,847 .xlsx files encrypted in finance share' }], relationships:[{ type:'Network Peer', target:'WKS-112-X', iconType:'server' }, { type:'Service Account', target:'CORP\\svc_admin_temp', iconType:'user' }], playbook:'RANSOMWARE_RESPONSE' },
-  'DC-01': { entity:'DC-01', type:'Domain Controller', risk_score:60, source_ip:'172.16.0.1', attack_type:'Brute Force Target', related_incidents:['inc_103'], affected_users:['admin','administrator'], related_events:[{ id:1, timestamp:new Date(Date.now()-14400000).toISOString(), type:'847 Failed Logins', source:'Active Directory', severity:'MEDIUM', detail:'Credential stuffing from 192.168.1.1' }, { id:2, timestamp:new Date(Date.now()-10800000).toISOString(), type:'Account Lockout x3', source:'Active Directory', severity:'HIGH', detail:'admin/administrator/root locked out' }], relationships:[{ type:'Attacker IP', target:'192.168.1.1', iconType:'network' }, { type:'Domain', target:'CORP.LOCAL', iconType:'server' }], playbook:'BRUTE_FORCE_RESPONSE' },
-  'APP-SRV-02': { entity:'APP-SRV-02', type:'Server', risk_score:75, source_ip:'45.33.2.1', attack_type:'Lateral Movement Target', related_incidents:['inc_102'], affected_users:['CORP\\jdoe'], related_events:[{ id:1, timestamp:new Date(Date.now()-7200000).toISOString(), type:'Pass-the-Hash Auth', source:'Windows Security', severity:'HIGH', detail:'NTLM hash from 45.33.2.1 used for CORP\\jdoe' }], relationships:[{ type:'Attacker IP', target:'45.33.2.1', iconType:'network' }, { type:'Target DB', target:'DB-SRV-01', iconType:'server' }], playbook:'AD_ELEVATION_RESPONSE' },
-  'DB-SRV-01': { entity:'DB-SRV-01', type:'Database Server', risk_score:80, source_ip:'10.0.0.20', attack_type:'Data Exfiltration', related_incidents:['inc_102'], affected_users:['CORP\\jdoe'], related_events:[{ id:1, timestamp:new Date(Date.now()-5400000).toISOString(), type:'SQL Dump via sqlcmd.exe', source:'DLP', severity:'HIGH', detail:'2.1GB exfiltrated from customer_db' }], relationships:[{ type:'Session Source', target:'APP-SRV-02', iconType:'server' }, { type:'User', target:'CORP\\jdoe', iconType:'user' }], playbook:'AD_ELEVATION_RESPONSE' },
-  '185.15.202.13': { entity:'185.15.202.13', type:'C2 Server', risk_score:99, attack_type:'Command & Control', related_incidents:['inc_101'], related_events:[{ id:1, timestamp:new Date(Date.now()-4800000).toISOString(), type:'C2 Beacon', source:'Firewall', severity:'CRITICAL', detail:'Outbound HTTPS from 10.0.5.22 — Cobalt Strike C2 (Rostelecom, RU, ASN12389)' }], relationships:[{ type:'Victim Host', target:'WKS-112-X', iconType:'server' }, { type:'ASN', target:'Rostelecom-RU', iconType:'globe' }], playbook:null },
-  'CORP\\svc_admin_temp': { entity:'CORP\\svc_admin_temp', type:'Service Account', risk_score:93, source_ip:'10.0.5.22', attack_type:'Privilege Abuse', related_incidents:['inc_101'], related_events:[{ id:1, timestamp:new Date(Date.now()-3600000).toISOString(), type:'Token Impersonation', source:'Windows Security', severity:'CRITICAL', detail:'SeImpersonatePrivilege → SYSTEM via jsmith session' }], relationships:[{ type:'Impersonated By', target:'CORP\\jsmith', iconType:'user' }, { type:'Host', target:'WKS-112-X', iconType:'server' }], playbook:'RANSOMWARE_RESPONSE' },
-  'CORP\\jdoe': { entity:'CORP\\jdoe', type:'User', risk_score:77, source_ip:'45.33.2.1', attack_type:'Compromised Account', related_incidents:['inc_102'], affected_hosts:['APP-SRV-02','DB-SRV-01'], related_events:[{ id:1, timestamp:new Date(Date.now()-7200000).toISOString(), type:'Pass-the-Hash Auth', source:'Windows Security', severity:'HIGH', detail:'NTLM hash reuse — jdoe auth without password' }], relationships:[{ type:'Primary Host', target:'APP-SRV-02', iconType:'server' }, { type:'Source IP', target:'45.33.2.1', iconType:'network' }], playbook:'AD_ELEVATION_RESPONSE' },
+  'WKS-112-X': { entity: 'WKS-112-X', type: 'Host', risk_score: 95, source_ip: '10.0.5.22', attack_type: 'Ransomware Victim', related_incidents: ['inc_101'], affected_users: ['CORP\\jsmith'], related_events: [{ id: 1, timestamp: new Date().toISOString(), type: 'Mass File Encryption', source: 'EDR', severity: 'CRITICAL', detail: '4,231 files encrypted in 90s on WKS-112-X' }], relationships: [{ type: 'User Session', target: 'CORP\\jsmith', iconType: 'user' }, { type: 'C2 Contact', target: '185.15.202.13', iconType: 'globe' }], playbook: 'RANSOMWARE_RESPONSE' },
+  'DC-01': { entity: 'DC-01', type: 'Domain Controller', risk_score: 88, source_ip: '172.16.0.1', attack_type: 'Brute Force Target', related_incidents: ['inc_102'], affected_users: ['administrator'], related_events: [{ id: 1, timestamp: new Date().toISOString(), type: '847 Failed Logins', source: 'Active Directory', severity: 'HIGH', detail: 'Credential stuffing from 192.168.1.1' }], relationships: [{ type: 'Attacker IP', target: '192.168.1.1', iconType: 'network' }, { type: 'Domain', target: 'CORP.LOCAL', iconType: 'server' }], playbook: 'BRUTE_FORCE_RESPONSE' },
+  'APP-SRV-02': { entity: 'APP-SRV-02', type: 'Server', risk_score: 75, source_ip: '45.33.2.1', attack_type: 'Lateral Movement Target', related_incidents: ['inc_102'], affected_users: ['CORP\\jdoe'], related_events: [{ id: 1, timestamp: new Date().toISOString(), type: 'Pass-the-Hash Auth', source: 'Windows Security', severity: 'HIGH', detail: 'NTLM hash from 45.33.2.1 used for CORP\\jdoe' }], relationships: [{ type: 'Attacker IP', target: '45.33.2.1', iconType: 'network' }, { type: 'Target DB', target: 'DB-SRV-01', iconType: 'server' }], playbook: 'AD_ELEVATION_RESPONSE' },
+  'inc_101': { entity: 'inc_101', type: 'Incident', risk_score: 92, attack_type: 'Ransomware Outbreak', related_events: [{ id: 1, timestamp: new Date().toISOString(), type: 'Ransomware Note', source: 'CrowdStrike', severity: 'CRITICAL', detail: 'README_HOW_TO_DECRYPT.txt created on WKS-112-X' }], relationships: [{ type: 'Infected Host', target: 'WKS-112-X', iconType: 'server' }], playbook: 'RANSOMWARE_RESPONSE' },
+  'inc_102': { entity: 'inc_102', type: 'Incident', risk_score: 85, attack_type: 'Domain Escalation', related_events: [{ id: 1, timestamp: new Date().toISOString(), type: 'Privilege Abuse', source: 'AD Security', severity: 'CRITICAL', detail: 'Domain Admin token theft on DC-01' }], relationships: [{ type: 'Compromised DC', target: 'DC-01', iconType: 'server' }], playbook: 'AD_ELEVATION_RESPONSE' },
+  '1': { entity: '1', type: 'Incident', risk_score: 85, attack_type: 'Linux Brute Force', related_events: [{ id: 1, timestamp: new Date().toISOString(), type: 'SSH Brute Force', source: 'Syslog', severity: 'HIGH', detail: '150+ failed logins from 185.x.x.x' }], relationships: [{ type: 'Target Host', target: 'Mock-Linux-01', iconType: 'server' }], playbook: 'BRUTE_FORCE_RESPONSE' },
 };
 
 // Merge so all lookups go through one object
@@ -232,7 +231,7 @@ Object.assign(MOCK_ENTITIES, EXTRA_ENTITIES);
 
 // Incident status persistence (overrides mock/real data)
 const INCIDENT_STATUS_KEY = 'sentinel_incident_status';
-const MOCK_CREDS_KEY      = 'sentinel_mock_creds';
+const MOCK_CREDS_KEY = 'sentinel_mock_creds';
 
 
 const getIncidentStatus = (id: string, fallback: string) => {
@@ -240,149 +239,193 @@ const getIncidentStatus = (id: string, fallback: string) => {
   return store[id] || fallback;
 };
 
-
 // Mock data generator for testuser
+// --- GLOBAL TICK ENGINE FOR DEMO DYNAMICS ---
+let _liveTotalEvents = 5340234;
+let _liveAnomalies = 854;
+let _liveIncidents = 42;
+
+// Live buffer of anomalies that grows over time
+let _anomalyBuffer: any[] = [
+  { id: 101, device_id: '8a4be99a-200e-4511-a35c-264e0ce69aa8', threat_type: 'SSH_BRUTE_FORCE', severity_label: 'HIGH', created_at: new Date(Date.now() - 3600000).toISOString(), narrative: '150+ failed logins from unique IP 185.x.x.x', playbook: 'BRUTE_FORCE_RESPONSE' },
+  { id: 102, device_id: 'b997415c-9653-4f45-87bf-f4a84d936f76', threat_type: 'RANSOMWARE_INDICATOR', severity_label: 'CRITICAL', created_at: new Date(Date.now() - 1800000).toISOString(), narrative: 'Mass file modification in system32 detected', playbook: 'RANSOMWARE_RESPONSE' },
+  { id: 103, device_id: 'net-edge-001', threat_type: 'LATERAL_MOVEMENT', severity_label: 'HIGH', created_at: new Date(Date.now() - 900000).toISOString(), narrative: 'Internal port scanning detected from host', playbook: 'LATERAL_MOVEMENT_RESPONSE' },
+];
+
+// Update global counts every 2 seconds
+setInterval(() => {
+  _liveTotalEvents += Math.floor(Math.random() * 50) + 20;
+}, 2000);
+
+// Inject a new anomaly every 5 seconds to keep the feed moving
+setInterval(() => {
+  const types = [
+    { t: 'C2_BEACON', s: 'CRITICAL', n: 'Outbound beacon to suspected Cobalt Strike' },
+    { t: 'SUSPICIOUS_SUDO', s: 'MEDIUM', n: 'Unexpected privilege escalation on root' },
+    { t: 'UNUSUAL_LOGON', s: 'HIGH', n: 'Logon from untrusted geolocation detected' },
+    { t: 'DATA_EXFIL', s: 'CRITICAL', n: 'Mass data transfer to unauthorized cloud storage' },
+    { t: 'SQL_INJECTION', s: 'HIGH', n: 'SQL injection pattern detected on APP-SRV-02' }
+  ];
+  const pick = types[Math.floor(Math.random() * types.length)];
+  const newAnom = {
+    id: Date.now(),
+    device_id: ['8a4be99a-200e-4511-a35c-264e0ce69aa8', 'b997415c-9653-4f45-87bf-f4a84d936f76', 'net-edge-001', 'wks-112-pro', 'WKS-112-X', 'DC-01'][Math.floor(Math.random() * 6)],
+    threat_type: pick.t,
+    severity_label: pick.s,
+    created_at: new Date().toISOString(),
+    narrative: pick.n,
+    playbook: 'BRUTE_FORCE_RESPONSE'
+  };
+  _anomalyBuffer = [newAnom, ..._anomalyBuffer].slice(0, 50);
+  _liveAnomalies += 1;
+}, 5000);
+
 const getMockData = (endpoint: string) => {
-  const df = getActiveDeviceFilter();
-  const filterByIp = (items: any[]) => {
-    if (!df) return items;
-    return items.filter(i => df.includes(i.source_ip));
+  const filterIds = getActiveDeviceFilter() || [];
+
+  const statusStore = JSON.parse(localStorage.getItem(INCIDENT_STATUS_KEY) || '{}');
+  const filterByDevice = (items: any[]) => {
+    if (filterIds.length === 0) return []; // STRICT: Return nothing if no devices selected
+    return items.filter(i => filterIds.includes(i.device_id));
   };
 
-  if (endpoint.includes('/api/incidents')) {
-    const raw = [
-      { id: 'inc_101', severity_label: 'CRITICAL', source_ip: '10.0.5.22', attack_type: 'Ransomware Activity', playbook: 'RANSOMWARE_RESPONSE', status: getIncidentStatus('inc_101', 'OPEN'), created_at: new Date().toISOString() },
-      { id: 'inc_102', severity_label: 'HIGH', source_ip: '45.33.2.1', attack_type: 'Lateral Movement', playbook: 'AD_ELEVATION_RESPONSE', status: getIncidentStatus('inc_102', 'OPEN'), created_at: new Date(Date.now() - 3600000).toISOString() },
-      { id: 'inc_103', severity_label: 'MEDIUM', source_ip: '192.168.1.1', attack_type: 'Brute Force', playbook: null, status: getIncidentStatus('inc_103', 'INVESTIGATING'), created_at: new Date(Date.now() - 7200000).toISOString() },
-      { id: 'inc_104', severity_label: 'CRITICAL', source_ip: '10.0.5.22', attack_type: 'Privilege Escalation', playbook: 'AD_ELEVATION_RESPONSE', status: getIncidentStatus('inc_104', 'OPEN'), created_at: new Date(Date.now() - 1800000).toISOString() },
-      { id: 'inc_105', severity_label: 'HIGH', source_ip: '45.33.2.1', attack_type: 'Data Exfiltration', playbook: null, status: getIncidentStatus('inc_105', 'OPEN'), created_at: new Date(Date.now() - 900000).toISOString() },
-    ];
-    return { data: { incidents: filterByIp(raw) }};
-  }
-  if (endpoint.includes('/api/events/stats')) {
-    const eps = 4200 + Math.random() * 200;
-    const lat = 3.8 + Math.random() * 1.2;
-    return { data: { status: 'HEALTHY', events_per_second: parseFloat(eps.toFixed(1)), avg_latency_ms: parseFloat(lat.toFixed(2)), drop_rate_pct: 0 }};
-  }
+  const mockIncidents = [
+    { id: '1', device_id: '8a4be99a-200e-4511-a35c-264e0ce69aa8', title: 'Linux Brute Force Attack', severity_label: 'HIGH', status: statusStore['1'] || 'OPEN', created_at: new Date().toISOString(), playbook: 'BRUTE_FORCE_RESPONSE', type: 'Incident' },
+    { id: '2', device_id: 'b997415c-9653-4f45-87bf-f4a84d936f76', title: 'Windows Ransomware Indicator', severity_label: 'CRITICAL', status: statusStore['2'] || 'OPEN', created_at: new Date().toISOString(), playbook: 'RANSOMWARE_RESPONSE', type: 'Incident' },
+    { id: 'inc_101', device_id: 'WKS-112-X', title: 'Critical Ransomware Outbreak', severity_label: 'CRITICAL', status: statusStore['inc_101'] || 'OPEN', created_at: new Date().toISOString(), playbook: 'RANSOMWARE_RESPONSE', type: 'Incident' },
+    { id: 'inc_102', device_id: 'DC-01', title: 'Domain Controller Compromise', severity_label: 'CRITICAL', status: statusStore['inc_102'] || 'OPEN', created_at: new Date().toISOString(), playbook: 'AD_ELEVATION_RESPONSE', type: 'Incident' }
+  ];
+
   if (endpoint.includes('/api/dashboard/kpis')) {
-    tickLive();
-    const df = getActiveDeviceFilter();
-    const isTest = isTestUser();
-    const baseEvts = isTest ? _liveEventCount : 0;
-    const baseAnoms = isTest ? _liveAnomCount : 0;
-    const evts = df ? Math.round(baseEvts * (df.length / 6)) : baseEvts;
-    const anoms = df ? Math.round(baseAnoms * (df.length / 6)) : baseAnoms;
+    const filteredAnoms = filterByDevice(_anomalyBuffer);
+    const filteredIncs = filterByDevice(mockIncidents);
+    const openCount = filteredIncs.filter(i => i.status !== 'RESOLVED').length;
+    const resolvedInFiltered = filteredIncs.filter(i => i.status === 'RESOLVED').length;
     
-    // Filter base incidents to get actual open count
-    const rawIncidents = [
-      { id: 'inc_101', source_ip: '10.0.5.22' },
-      { id: 'inc_102', source_ip: '45.33.2.1' },
-      { id: 'inc_103', source_ip: '192.168.1.1' },
-      { id: 'inc_104', source_ip: '10.0.5.22' },
-      { id: 'inc_105', source_ip: '45.33.2.1' },
-    ];
-    const statusStore = JSON.parse(localStorage.getItem(INCIDENT_STATUS_KEY) || '{}');
-    const MAX_DEVICES = isTest ? 5 : 6;
-    const currentActive = df ? df.length : MAX_DEVICES;
-    
-    const incidents = [
-       { id: 'inc_101', source_ip: '10.0.5.22' },
-       { id: 'inc_102', source_ip: '45.33.2.1' },
-       { id: 'inc_103', source_ip: '192.168.1.1' },
-       { id: 'inc_104', source_ip: '10.0.5.22' },
-       { id: 'inc_105', source_ip: '45.33.2.1' },
-    ];
-    const filteredIncidents = df ? incidents.filter(i => df.includes(i.source_ip)) : incidents;
-    const openCount = filteredIncidents.filter(i => statusStore[i.id] !== 'RESOLVED').length;
-    const closedCount = filteredIncidents.filter(i => statusStore[i.id] === 'RESOLVED').length;
+    // Strict scaling: 0 devices = 0 events. 15% per device otherwise.
+    const eventFactor = filterIds.length > 0 ? Math.min(1.0, filterIds.length * 0.15) : 0;
+    const currentTotal = Math.floor(_liveTotalEvents * eventFactor);
 
-    // Real-time anomalies list to ensure count matches list
-    const rawAnoms = [
-      { id: 'anom_1', severity_label: 'CRITICAL', source_ip: '10.0.5.22' },
-      { id: 'anom_2', severity_label: 'HIGH', source_ip: '45.33.2.1' },
-      { id: 'anom_3', severity_label: 'HIGH', source_ip: '10.0.5.22' },
-      { id: 'anom_4', severity_label: 'MEDIUM', source_ip: '192.168.1.1' },
-      { id: 'anom_5', severity_label: 'HIGH', source_ip: '45.33.2.1' },
-      { id: 'anom_6', severity_label: 'MEDIUM', source_ip: '10.0.1.15' },
-      { id: 'anom_7', severity_label: 'LOW', source_ip: '10.0.1.22' },
-    ];
-    const filteredAnoms = df ? rawAnoms.filter(a => df.includes(a.source_ip)) : rawAnoms;
-
-    return { data: { 
-      total_events_24h: df ? Math.round(_liveEventCount * (df.length / MAX_DEVICES)) : _liveEventCount, 
-      total_anomalies_24h: filteredAnoms.length, 
-      open_incidents: openCount, 
-      closed_incidents: closedCount,
-      active_devices: currentActive
-    }};
+    return {
+      data: {
+        total_events_24h: currentTotal,
+        total_anomalies_24h: filteredAnoms.length,
+        open_incidents: openCount,
+        closed_incidents: resolvedInFiltered,
+        active_devices: filterIds.length 
+      }
+    };
   }
+
   if (endpoint.includes('/api/dashboard/anomalies')) {
-    const rawAnoms = [
-      { id: 'anom_1', severity_label: 'CRITICAL', threat_type: 'Ransomware Activity', source_ip: '10.0.5.22', severity_score: 0.97, created_at: new Date().toISOString() },
-      { id: 'anom_2', severity_label: 'HIGH', threat_type: 'Lateral Movement (Pass-the-Hash)', source_ip: '45.33.2.1', severity_score: 0.78, created_at: new Date(Date.now() - 1200000).toISOString() },
-      { id: 'anom_3', severity_label: 'HIGH', threat_type: 'C2 Outbound Connection', source_ip: '10.0.5.22', severity_score: 0.91, created_at: new Date(Date.now() - 1800000).toISOString() },
-      { id: 'anom_4', severity_label: 'MEDIUM', threat_type: 'Brute Force (SSH)', source_ip: '192.168.1.1', severity_score: 0.55, created_at: new Date(Date.now() - 2600000).toISOString() },
-      { id: 'anom_5', severity_label: 'HIGH', threat_type: 'Privilege Escalation', source_ip: '45.33.2.1', severity_score: 0.84, created_at: new Date(Date.now() - 3400000).toISOString() },
-      { id: 'anom_6', severity_label: 'MEDIUM', threat_type: 'Unusual Login Time', source_ip: '10.0.1.15', severity_score: 0.45, created_at: new Date(Date.now() - 4200000).toISOString() },
-      { id: 'anom_7', severity_label: 'LOW', threat_type: 'Port Scan Detected', source_ip: '10.0.1.22', severity_score: 0.25, created_at: new Date(Date.now() - 5000000).toISOString() },
-    ];
-    return { data: filterByIp(rawAnoms) };
+    return { data: filterByDevice(_anomalyBuffer) };
   }
-  if (endpoint.includes('/api/entity/')) {
-    const id = endpoint.split('/').pop() || '';
-    const ent = MOCK_ENTITIES[id];
-    if (ent && ent.type === 'Incident') {
-      return { data: { ...ent, status: getIncidentStatus(id, ent.status || 'OPEN') } };
+
+  if (endpoint.includes('/api/incidents')) {
+    const filtered = filterByDevice(mockIncidents);
+    return { data: { incidents: filtered, count: filtered.length } };
+  }
+
+  if (endpoint.includes('/api/events/stats')) {
+    const pulse = Math.sin(Date.now() / 2000) * 2;
+    const eventFactor = filterIds.length > 0 ? Math.min(1.0, filterIds.length * 0.15) : 0;
+    return {
+      data: {
+        events_per_second: (12.5 + pulse) * eventFactor,
+        avg_latency_ms: eventFactor > 0 ? 4.2 + (pulse * 0.1) : 0,
+        drop_rate_pct: 0.0,
+        total_events: Math.floor(_liveTotalEvents * eventFactor)
+      }
+    };
+  }
+
+  if (endpoint.includes('/api/dashboard/metrics')) {
+    const metrics = [];
+    const now = Date.now();
+    const eventFactor = filterIds.length > 0 ? Math.min(1.0, filterIds.length * 0.15) : 0;
+    for (let i = 0; i < 24; i++) {
+      const ts = new Date(now - i * 3600000).toISOString();
+      metrics.push({
+        timestamp: ts,
+        event_count: Math.floor((100 + Math.random() * 50) * eventFactor),
+        anomaly_count: Math.floor((Math.random() * 5) * eventFactor),
+        avg_score: eventFactor > 0 ? 0.1 + Math.random() * 0.2 : 0
+      });
     }
-    return { data: ent };
+    return { data: metrics.reverse() };
   }
+
+  if (endpoint.includes('/api/dashboard/devices')) {
+    return {
+      data: [
+        { id: '8a4be99a-200e-4511-a35c-264e0ce69aa8', hostname: 'Mock-Linux-01', ip_address: '192.168.1.45', os_type: 'Ubuntu 22.04 (Linux)', is_active: true, status: 'ONLINE', type: 'Server' },
+        { id: 'b997415c-9653-4f45-87bf-f4a84d936f76', hostname: 'Mock-Win-Server', ip_address: '10.0.0.12', os_type: 'Windows Server 2022', is_active: true, status: 'ONLINE', type: 'Server' },
+        { id: 'net-edge-001', hostname: 'Mock-Net-Edge', ip_address: '172.16.0.1', os_type: 'Zeek Network OS', is_active: true, status: 'ONLINE', type: 'Network' },
+        { id: 'wks-112-pro', hostname: 'Mock-WKS-112', ip_address: '10.0.5.101', os_type: 'Windows 11 Pro', is_active: true, status: 'ONLINE', type: 'Workstation' },
+        { id: 'WKS-112-X', hostname: 'WKS-112-X', ip_address: '10.0.5.22', os_type: 'Windows 10 Enterprise', is_active: true, status: 'ONLINE', type: 'Workstation' },
+        { id: 'DC-01', hostname: 'DC-01', ip_address: '172.16.0.1', os_type: 'Windows Server (Active Directory)', is_active: true, status: 'ONLINE', type: 'Infrastructure' },
+        { id: 'APP-SRV-02', hostname: 'APP-SRV-02', ip_address: '45.33.2.1', os_type: 'Ubuntu Linux 20.04', is_active: true, status: 'ONLINE', type: 'Server' }
+      ]
+    };
+  }
+
   if (endpoint.includes('/api/dashboard/stats') || endpoint.includes('/api/dashboard/db-stats')) {
-    const isTest = isTestUser();
-    return { data: { 
-      normalized_events: isTest ? 5340234 : 0, 
-      anomalies: isTest ? 854 : 0, 
-      incidents: isTest ? 42 : 0, 
-      devices: isTest ? 45 : 0, 
-      model_registry: isTest ? 2 : 0, 
-      feedback_labels: isTest ? 5 : 0, 
-      users: isTest ? 4 : 0, 
-      agents: isTest ? 4 : 0 
-    }};
+    const eventFactor = filterIds.length > 0 ? Math.min(1.0, filterIds.length * 0.15) : 0;
+    const filteredIncs = filterByDevice(mockIncidents);
+    const filteredAnoms = filterByDevice(_anomalyBuffer);
+    return {
+      data: {
+        normalized_events: Math.floor(_liveTotalEvents * eventFactor),
+        anomalies: filteredAnoms.length,
+        incidents: filteredIncs.length,
+        devices: filterIds.length,
+        model_registry: filterIds.length > 0 ? 2 : 0,
+        feedback_labels: filterIds.length > 0 ? 5 : 0
+      }
+    };
   }
   if (endpoint.includes('/api/dashboard/health')) {
-    return { data: { status: 'HEALTHY', events_per_second: 12.5, avg_latency_ms: 4.2, drop_rate_pct: 0.0 }};
+    return { data: { status: 'HEALTHY', events_per_second: 12.5, avg_latency_ms: 4.2, drop_rate_pct: 0.0 } };
   }
   if (endpoint.includes('/api/dashboard/generate-token')) {
-    return { data: { token: 'SENT-' + Math.random().toString(36).slice(2,10).toUpperCase() + '-' + Date.now() }};
+    return { data: { token: 'SENT-' + Math.random().toString(36).slice(2, 10).toUpperCase() + '-' + Date.now() } };
   }
   if (endpoint.includes('/api/dashboard/retrain')) {
-    return { data: { status: 'ok', events: _liveEventCount, models_retrained: 2, duration_ms: 8234, message: `Ensemble + Autoencoder retrained on ${_liveEventCount.toLocaleString()} events.` }};
+    return { data: { status: 'ok', events: _liveTotalEvents, models_retrained: 2, duration_ms: 8234, message: `Ensemble + Autoencoder retrained on ${_liveTotalEvents.toLocaleString()} events.` } };
   }
   if (endpoint.includes('/api/dashboard/run-drift')) {
-    return { data: { status: 'ok', features_checked: 8, drifted: 3, message: 'PSI drift detection complete. 3 features drifted (login_hour, failed_logins, latent_var).' }};
+    return { data: { status: 'ok', features_checked: 8, drifted: 3, message: 'PSI drift detection complete. 3 features drifted (login_hour, failed_logins, latent_var).' } };
   }
   if (endpoint.includes('/api/dashboard/models')) {
-    return { data: [
-      { model_name:'ensemble',    model_type:'Isolation Forest + LOF + OCSVM', event_count:1543290, trained_at:new Date(Date.now()-86400000*2).toISOString(), version:'v2.4.1', is_stale:false },
-      { model_name:'autoencoder', model_type:'PyTorch Neural Autoencoder',     event_count:1543290, trained_at:new Date(Date.now()-86400000*2).toISOString(), version:'v1.8.0', is_stale:false },
-    ]};
+    return {
+      data: [
+        { model_name: 'ensemble', model_type: 'Isolation Forest + LOF + OCSVM', event_count: 1543290, trained_at: new Date(Date.now() - 86400000 * 2).toISOString(), version: 'v2.4.1', is_stale: false },
+        { model_name: 'autoencoder', model_type: 'PyTorch Neural Autoencoder', event_count: 1543290, trained_at: new Date(Date.now() - 86400000 * 2).toISOString(), version: 'v1.8.0', is_stale: false },
+      ]
+    };
   }
   if (endpoint.includes('/api/devices')) {
-    return { data: [
-      { device_id:'AGT-WIN-01', source_type:'Windows Event Log', ip_address:'10.0.5.22',    is_active:true,  last_seen:new Date(Date.now()-2000).toISOString(),       os_type:'Windows Server 2022' },
-      { device_id:'AGT-LIN-02', source_type:'Syslog / Auth',     ip_address:'45.33.2.1',    is_active:true,  last_seen:new Date(Date.now()-12000).toISOString(),      os_type:'Ubuntu 22.04' },
-      { device_id:'AGT-NET-01', source_type:'Zeek Network',       ip_address:'192.168.1.1',  is_active:true,  last_seen:new Date(Date.now()-240000).toISOString(),     os_type:'Zeek 6.0' },
-      { device_id:'AGT-WIN-02', source_type:'Windows Event Log',  ip_address:'10.0.5.23',    is_active:false, last_seen:new Date(Date.now()-50400000).toISOString(),   os_type:'Windows 10 Pro' },
-      { device_id:'AGT-LIN-03', source_type:'Syslog / Auth',     ip_address:'10.0.1.15',    is_active:true,  last_seen:new Date(Date.now()-5000).toISOString(),       os_type:'CentOS 8' },
-    ]};
+    return {
+      data: [
+        { id: '8a4be99a-200e-4511-a35c-264e0ce69aa8', hostname: 'Mock-Linux-01', ip_address: '192.168.1.45', os_type: 'Ubuntu 22.04 (Linux)', is_active: true, status: 'ONLINE', type: 'Server' },
+        { id: 'b997415c-9653-4f45-87bf-f4a84d936f76', hostname: 'Mock-Win-Server', ip_address: '10.0.0.12', os_type: 'Windows Server 2022', is_active: true, status: 'ONLINE', type: 'Server' },
+        { id: 'net-edge-001', hostname: 'Mock-Net-Edge', ip_address: '172.16.0.1', os_type: 'Zeek Network OS', is_active: true, status: 'ONLINE', type: 'Network' },
+        { id: 'wks-112-pro', hostname: 'Mock-WKS-112', ip_address: '10.0.5.101', os_type: 'Windows 11 Pro', is_active: true, status: 'ONLINE', type: 'Workstation' },
+        { id: 'WKS-112-X', hostname: 'WKS-112-X', ip_address: '10.0.5.22', os_type: 'Windows 10 Enterprise', is_active: true, status: 'ONLINE', type: 'Workstation' },
+        { id: 'DC-01', hostname: 'DC-01', ip_address: '172.16.0.1', os_type: 'Windows Server (Active Directory)', is_active: true, status: 'ONLINE', type: 'Infrastructure' },
+        { id: 'APP-SRV-02', hostname: 'APP-SRV-02', ip_address: '45.33.2.1', os_type: 'Ubuntu Linux 20.04', is_active: true, status: 'ONLINE', type: 'Server' }
+      ]
+    };
   }
   if (endpoint.includes('/api/dashboard/users')) {
-    return { data: [
-      { id:'usr_001', username:'admin',    role:'ADMIN',   created_at:new Date(Date.now()-86400000*30).toISOString() },
-      { id:'usr_002', username:'testuser', role:'ANALYST', created_at:new Date(Date.now()-86400000*14).toISOString() },
-      { id:'usr_003', username:'jsmith',   role:'ANALYST', created_at:new Date(Date.now()-86400000*7).toISOString() },
-      { id:'usr_004', username:'jdoe',     role:'VIEWER',  created_at:new Date(Date.now()-86400000*3).toISOString() },
-    ]};
+    return {
+      data: [
+        { id: 'usr_001', username: 'admin', role: 'ADMIN', created_at: new Date(Date.now() - 86400000 * 30).toISOString() },
+        { id: 'usr_002', username: 'testuser', role: 'ANALYST', created_at: new Date(Date.now() - 86400000 * 14).toISOString() },
+        { id: 'usr_003', username: 'jsmith', role: 'ANALYST', created_at: new Date(Date.now() - 86400000 * 7).toISOString() },
+        { id: 'usr_004', username: 'jdoe', role: 'VIEWER', created_at: new Date(Date.now() - 86400000 * 3).toISOString() },
+      ]
+    };
   }
   if (endpoint.includes('/api/entity/')) {
     const id = endpoint.split('/').pop() || '';
@@ -398,7 +441,7 @@ const getMockData = (endpoint: string) => {
     const statusStore = JSON.parse(localStorage.getItem(INCIDENT_STATUS_KEY) || '{}');
     const closed = Object.keys(statusStore).filter(k => statusStore[k] === 'RESOLVED');
     const custom = JSON.parse(localStorage.getItem('sentinel_custom_resolutions') || '{}');
-    
+
     const content = `
 ================================================================================
 AI-SENTINEL SOC EXECUTIVE SUMMARY REPORT
@@ -420,7 +463,7 @@ ${closed.map(id => ` - [${id}] Status: RESOLVED (${custom[id]?.playbook || 'Stan
 
 3. SYSTEM HEALTH & TELEMETRY
 --------------------------------------------------------------------------------
-- Active Devices: 6
+- Active Devices: 7
 - Ingestion Status: STABLE
 - Model Integrity: 99.4% (Ensemble v2.4.1)
 
@@ -441,7 +484,7 @@ END OF REPORT
 
 // Lets admin password changes work offline without a backend
 
-const getMockCreds = (): Record<string,{ password: string; role: string }> => {
+const getMockCreds = (): Record<string, { password: string; role: string }> => {
   try { return JSON.parse(localStorage.getItem(MOCK_CREDS_KEY) || '{}'); } catch { return {}; }
 };
 
@@ -460,10 +503,10 @@ const setMockRole = (username: string, role: string) => {
 
 // Default mock credentials pre-seeded (overridden by localStorage)
 const SEED_CREDS: Record<string, { password: string; role: string }> = {
-  admin:    { password: 'admin',    role: 'ADMIN' },
+  admin: { password: 'admin', role: 'ADMIN' },
   testuser: { password: 'testuser', role: 'ANALYST' },
-  jsmith:   { password: 'jsmith',   role: 'ANALYST' },
-  jdoe:     { password: 'jdoe',     role: 'VIEWER' },
+  jsmith: { password: 'jsmith', role: 'ANALYST' },
+  jdoe: { password: 'jdoe', role: 'VIEWER' },
 };
 
 const resolveCred = (username: string) => {
@@ -472,8 +515,10 @@ const resolveCred = (username: string) => {
   return store[username] || SEED_CREDS[username] || null;
 };
 
-const isTestUser = () => localStorage.getItem('sentinel_username') === 'testuser';
-
+export const isTestUser = () => {
+  const user = localStorage.getItem('sentinel_username');
+  return user === 'testuser'; // STRICT: Only testuser gets mock data
+};
 // Existing Endpoints wrapped with mock logic
 export const login = async (credentials: { username: string; password: string }) => {
   // 1. Try the real backend first
@@ -488,9 +533,9 @@ export const login = async (credentials: { username: string; password: string })
     if (cred && cred.password === credentials.password) {
       const role = cred.role;
       const token = `mock-${credentials.username}-${Date.now()}`;
-      localStorage.setItem('sentinel_token',    token);
+      localStorage.setItem('sentinel_token', token);
       localStorage.setItem('sentinel_username', credentials.username);
-      localStorage.setItem('sentinel_role',     role);
+      localStorage.setItem('sentinel_role', role);
       return { data: { access_token: token, role } };
     }
     throw new Error('Invalid credentials');
@@ -502,7 +547,7 @@ export const updateIncidentStatus = async (id: string | number, status: string) 
   const store = JSON.parse(localStorage.getItem(INCIDENT_STATUS_KEY) || '{}');
   store[idStr] = status;
   localStorage.setItem(INCIDENT_STATUS_KEY, JSON.stringify(store));
-  
+
   // Dispatch event for local reactivity
   window.dispatchEvent(new Event('sentinel_state_change'));
 
@@ -525,8 +570,8 @@ export const getHealth = async () => api.get('/api/health');
 
 export const getIncidents = async () => {
   // 1. Try real API first
-  try { 
-    const res = await api.get('/api/incidents'); 
+  try {
+    const res = await api.get('/api/incidents');
     if (res.data?.incidents?.length > 0) {
       // Merge local resolutions to ensure instant feedback
       const statusStore = JSON.parse(localStorage.getItem(INCIDENT_STATUS_KEY) || '{}');
@@ -548,15 +593,38 @@ export const getIncidents = async () => {
 export const assignIncident = async (id: number, assigned_to: string) => api.post(`/incidents/${id}/assign`, { assigned_to });
 
 export const getIngestionStats = async () => {
-  try { return await api.get('/api/dashboard/health'); } catch {}
+  try {
+    const res = await api.get('/api/dashboard/health');
+    if (res.data?.events_per_second > 0) return res;
+  } catch { }
+
+  if (isTestUser()) {
+    // Provide "pulsing" mock stats for demo
+    const pulse = Math.sin(Date.now() / 2000) * 2;
+    return {
+      data: {
+        events_per_second: 12.5 + pulse,
+        avg_latency_ms: 4.2 + (pulse * 0.1),
+        drop_rate_pct: 0.0
+      }
+    };
+  }
   return { data: { events_per_second: 0, avg_latency_ms: 0, drop_rate_pct: 0 } };
 };
 
 export const getAnomalies = async () => {
-  try { 
-    const res = await api.get('/api/dashboard/anomalies'); 
+  const deviceId = getActiveDeviceFilter();
+  // 1. Try real API first
+  try {
+    const res = await api.get(`/api/dashboard/anomalies${deviceId ? `?device_id=${deviceId}` : ''}`);
     if (res.data?.length > 0) return res;
-  } catch {}
+  } catch { }
+
+  // 2. Fallback to mock ONLY for testuser
+  if (isTestUser()) {
+    return getMockData('/api/dashboard/anomalies');
+  }
+
   return { data: [] };
 };
 
@@ -565,13 +633,14 @@ export const getEvents = async (limit = 1000) => {
 };
 
 export const getKpis = async () => {
+  const deviceId = getActiveDeviceFilter();
   let kpis: any = { total_events_24h: 0, total_anomalies_24h: 0, open_incidents: 0, closed_incidents: 0, active_devices: 0 };
-  
+
   // 1. Try real API first
-  try { 
-    const res = await api.get('/api/dashboard/kpis'); 
+  try {
+    const res = await api.get(`/api/dashboard/kpis${deviceId ? `?device_id=${deviceId}` : ''}`);
     if (res.data) kpis = { ...res.data };
-  } catch (err) {}
+  } catch (err) { }
 
   // 3. FORCE correct closed_incidents count based on local status store
   // This ensures the counter matches the "Resolved" section exactly.
@@ -580,7 +649,13 @@ export const getKpis = async () => {
     const closedCount = Object.values(statusStore).filter(s => s === 'RESOLVED' || s === 'FALSE_POSITIVE').length;
     // We use the MAX of the local count and server count to avoid losing data
     kpis.closed_incidents = Math.max(kpis.closed_incidents || 0, closedCount);
-  } catch {}
+  } catch { }
+
+  // 4. Fallback to mock ONLY for testuser if real counts are zero
+  if (isTestUser() && kpis.total_events_24h === 0) {
+    const mock = getMockData('/api/dashboard/kpis')?.data || {};
+    return { data: { ...kpis, ...mock } };
+  }
 
   return { data: kpis };
 };
@@ -594,7 +669,23 @@ export const generateToken = async () => {
   if (isTestUser()) return getMockData('/api/dashboard/generate-token') || api.post('/api/dashboard/generate-token');
   return api.post('/api/dashboard/generate-token');
 };
-export const getMetrics = async () => api.get('/api/metrics');
+export const getMetrics = async () => {
+  const start = new Date(Date.now() - 86400000).toISOString();
+  const end = new Date().toISOString();
+
+  // 1. Try real API
+  try {
+    const res = await api.get(`/api/dashboard/metrics?start=${start}&end=${end}`);
+    if (res.data?.length > 0) return res;
+  } catch { }
+
+  // 2. Mock fallback for testuser
+  if (isTestUser()) {
+    return getMockData('/api/dashboard/metrics');
+  }
+
+  return { data: [] };
+};
 export const getDevices = async () => {
   if (isTestUser()) return getMockData('/api/dashboard/devices') || { data: [] };
   try { return await api.get('/api/dashboard/devices'); } catch { return { data: [] }; }
@@ -611,46 +702,47 @@ export const updateDeviceStatus = async (id: string, active: boolean) => {
 export const retrainModel = async () => {
   const isAdmin = localStorage.getItem('sentinel_role') === 'ADMIN';
   const isTest = isTestUser();
-  
-  try { 
+
+  try {
     const res = await api.post('/api/dashboard/retrain');
     if (res.data?.status === 'ok' || res.data?.status === 'success') return res;
     throw new Error(res.data?.message || 'Retrain returned non-ok status');
-  } 
-  catch (err) { 
-    // If Admin or TestUser is testing offline/broken backend, allow mock success
-    if (isAdmin || isTest) {
+  }
+  catch (err) {
+    // If TestUser is testing offline/broken backend, allow mock success
+    if (isTest) {
       return new Promise(r => setTimeout(() => r({ data: { status: 'success', message: 'Model retraining started (Simulation)' } }), 1000));
     }
-    return { data: { status: 'error', message: (err as any).message || 'Offline' } }; 
+    return { data: { status: 'error', message: (err as any).message || 'Offline' } };
   }
 };
 export const runDrift = async () => {
   const isAdmin = localStorage.getItem('sentinel_role') === 'ADMIN';
   const isTest = isTestUser();
 
-  try { 
+  try {
     const res = await api.post('/api/dashboard/run-drift');
     if (res.data?.status === 'ok' || res.data?.status === 'success') return res;
     throw new Error(res.data?.message || 'Drift detection returned non-ok status');
-  } 
-  catch (err) { 
-    if (isAdmin || isTest) {
+  }
+  catch (err) {
+    if (isTest) {
       return new Promise(r => setTimeout(() => r({ data: { status: 'success', message: 'Drift detection completed (Simulation)' } }), 1000));
     }
-    return { data: { status: 'error', message: (err as any).message || 'Offline' } }; 
+    return { data: { status: 'error', message: (err as any).message || 'Offline' } };
   }
 };
 export const getModelRegistry = async () => {
-  const isAdmin = localStorage.getItem('sentinel_role') === 'ADMIN';
-  if (isTestUser() || isAdmin) {
+  if (isTestUser()) {
     const res = await api.get('/api/dashboard/models').catch(() => null);
     if (res?.data && res.data.length > 0) return res;
-    // Fallback to mock models if backend empty or offline for Admin/Test
-    return { data: [
-      { model_name: 'ensemble',    model_type: 'Isolation Forest + LOF + OCSVM', event_count: 1543290, trained_at: new Date(Date.now()-86400000*2).toISOString(), version: 'v2.4.1', is_stale: false },
-      { model_name: 'autoencoder', model_type: 'PyTorch Neural Autoencoder',     event_count: 1543290, trained_at: new Date(Date.now()-86400000*2).toISOString(), version: 'v1.8.0', is_stale: false },
-    ]};
+    // Fallback to mock models if backend empty or offline for Test
+    return {
+      data: [
+        { model_name: 'ensemble', model_type: 'Isolation Forest + LOF + OCSVM', event_count: 1543290, trained_at: new Date(Date.now() - 86400000 * 2).toISOString(), version: 'v2.4.1', is_stale: false },
+        { model_name: 'autoencoder', model_type: 'PyTorch Neural Autoencoder', event_count: 1543290, trained_at: new Date(Date.now() - 86400000 * 2).toISOString(), version: 'v1.8.0', is_stale: false },
+      ]
+    };
   }
   try { return await api.get('/api/dashboard/models'); } catch { return { data: [] }; }
 };
@@ -659,24 +751,27 @@ export const getDrift = async () => {
 };
 export const getEntityTimeline = async (params: any) => api.get('/api/entity-timeline', { params });
 export const getUsers = async () => {
-  try { 
-    const r = await api.get('/api/dashboard/users'); 
-    if (Array.isArray(r.data) && r.data.length) return r; 
-  } catch {}
-  
-  // Offline fallback: Merge SEED_CREDS + localStorage to show registered users
-  const store = (() => { try { return JSON.parse(localStorage.getItem(MOCK_CREDS_KEY) || '{}'); } catch { return {}; } })();
-  const merged = { ...SEED_CREDS, ...store };
-  const mockUsers = Object.entries(merged).map(([username, info], i) => ({
-    id: `usr_offline_${i}`,
-    username,
-    role: (info as any).role || 'ANALYST',
-    created_at: new Date().toISOString()
-  }));
-  return { data: mockUsers };
+  try {
+    const r = await api.get('/api/dashboard/users');
+    if (Array.isArray(r.data) && r.data.length) return r;
+  } catch { }
+
+  // Offline fallback only for testuser
+  if (isTestUser()) {
+    const store = (() => { try { return JSON.parse(localStorage.getItem(MOCK_CREDS_KEY) || '{}'); } catch { return {}; } })();
+    const merged = { ...SEED_CREDS, ...store };
+    const mockUsers = Object.entries(merged).map(([username, info], i) => ({
+      id: `usr_offline_${i}`,
+      username,
+      role: (info as any).role || 'ANALYST',
+      created_at: new Date().toISOString()
+    }));
+    return { data: mockUsers };
+  }
+  return { data: [] };
 };
 export const updateUserRole = async (user_id: string, role: string) => {
-  const knownUsers: Record<string,string> = { 'usr_001':'admin','usr_002':'testuser','usr_003':'jsmith','usr_004':'jdoe' };
+  const knownUsers: Record<string, string> = { 'usr_001': 'admin', 'usr_002': 'testuser', 'usr_003': 'jsmith', 'usr_004': 'jdoe' };
   const username = knownUsers[user_id] || user_id;
   setMockRole(username, role);
 
@@ -685,14 +780,14 @@ export const updateUserRole = async (user_id: string, role: string) => {
     localStorage.setItem('sentinel_role', role);
   }
 
-  try { return await api.post('/api/dashboard/users/role', { user_id, role }); } 
+  try { return await api.post('/api/dashboard/users/role', { user_id, role }); }
   catch { return { data: { ok: true, note: 'Saved locally' } }; }
 };
 export const updateUserPassword = async (user_id: string, password: string) => {
   // Always persist locally so offline logins work immediately
   // user_id is the db id (usr_001) — resolve to username from mock users
-  const knownUsers: Record<string,string> = {
-    'usr_001':'admin','usr_002':'testuser','usr_003':'jsmith','usr_004':'jdoe'
+  const knownUsers: Record<string, string> = {
+    'usr_001': 'admin', 'usr_002': 'testuser', 'usr_003': 'jsmith', 'usr_004': 'jdoe'
   };
   const username = knownUsers[user_id] || user_id;
   setMockCred(username, password);
@@ -708,11 +803,12 @@ export const getStats = async () => {
     const res = await api.get('/api/dashboard/stats').catch(() => null);
     if (res?.data && Object.keys(res.data).length > 0) return res;
     // Mock stats fallback only for testuser
-    return { data: { normalized_events: 5340234, anomalies: 854, incidents: 42, devices: 45, model_registry: 2, feedback_labels: 5, users: 4, agents: 4 }};
+    return { data: { normalized_events: 5340234, anomalies: 854, incidents: 42, devices: 45, model_registry: 2, feedback_labels: 5, users: 4, agents: 4 } };
   }
   try { return await api.get('/api/dashboard/stats'); } catch { return { data: { normalized_events: 0, anomalies: 0, incidents: 0, devices: 0, model_registry: 0, feedback_labels: 0, users: 0, agents: 0 } }; }
 };
 
 export const getEntity = async (id: string) => {
-  return getMockData(`/api/entity/${id}`) || api.get(`/api/entity/${id}`);
+  if (isTestUser()) return getMockData(`/api/entity/${id}`) || api.get(`/api/entity/${id}`);
+  return api.get(`/api/entity/${id}`);
 };

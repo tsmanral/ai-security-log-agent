@@ -231,35 +231,42 @@ const Analytics = () => {
 
   // ── Incident timeline (24 hourly buckets) ──────────────────────────────────
   const incTimeline = useMemo(() => {
-    const isMock = localStorage.getItem('sentinel_username') === 'testuser' && filteredIncidents.length === 0;
+    const isFiltered = deviceFilter && deviceFilter.size > 0;
+    const isGlobalMock = !deviceFilter; // Only show global mock if user hasn't touched filter at all
+    
     return Array.from({ length: 24 }, (_, i) => {
       const h = `${String(i).padStart(2, '0')}:00`;
       const base = filteredIncidents.filter(x => new Date(x.created_at).getHours() === i);
+      const hasReal = base.length > 0;
+      
       return {
         time: h,
-        CRITICAL: base.filter(x => x.severity_label === 'CRITICAL').length || (isMock ? Math.round(seed(i, 1, 3)) : 0),
-        HIGH:     base.filter(x => x.severity_label === 'HIGH').length     || (isMock ? Math.round(seed(i + 8, 3, 5)) : 0),
-        MEDIUM:   base.filter(x => x.severity_label === 'MEDIUM').length   || (isMock ? Math.round(seed(i + 16, 5, 7)) : 0),
+        CRITICAL: hasReal ? base.filter(x => x.severity_label === 'CRITICAL').length : (isGlobalMock ? Math.round(seed(i, 1, 3)) : 0),
+        HIGH:     hasReal ? base.filter(x => x.severity_label === 'HIGH').length     : (isGlobalMock ? Math.round(seed(i + 8, 3, 5)) : 0),
+        MEDIUM:   hasReal ? base.filter(x => x.severity_label === 'MEDIUM').length   : (isGlobalMock ? Math.round(seed(i + 16, 5, 7)) : 0),
       };
     });
-  }, [filteredIncidents]);
+  }, [filteredIncidents, deviceFilter]);
 
   // ── Event + Anomaly timeline ───────────────────────────────────────────────
   const evTimeline = useMemo(() => {
-    const isMock = localStorage.getItem('sentinel_username') === 'testuser' && (!kpis || kpis.total_events_24h === 0);
+    const isGlobalMock = !deviceFilter;
+    const hasData = kpis && kpis.total_events_24h > 0;
+
     return Array.from({ length: 24 }, (_, i) => ({
       time: `-${24 - i}h`,
-      Events:    isMock ? Math.round(seed(i, 1800, 3000)) : 0,
-      Anomalies: isMock ? Math.round(seed(i + 7, 12, 55)) : 0,
+      Events:    hasData ? (kpis.total_events_24h / 24) : (isGlobalMock ? Math.round(seed(i, 1800, 3000)) : 0),
+      Anomalies: hasData ? (kpis.total_anomalies_24h / 24) : (isGlobalMock ? Math.round(seed(i + 7, 12, 55)) : 0),
     }));
-  }, [kpis]);
+  }, [kpis, deviceFilter]);
 
   // ── Severity pie ───────────────────────────────────────────────────────────
   const sevPie = useMemo(() => {
     const c = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
     filteredAnomalies.forEach(a => { if (a.severity_label in c) (c as any)[a.severity_label]++; });
-    const isMock = localStorage.getItem('sentinel_username') === 'testuser';
-    if (Object.values(c).every(v => v === 0) && isMock) return [
+    const isGlobalMock = !deviceFilter;
+    
+    if (Object.values(c).every(v => v === 0) && isGlobalMock) return [
       { name: 'CRITICAL', value: 2,  color: C.critical },
       { name: 'HIGH',     value: 8,  color: C.high },
       { name: 'MEDIUM',   value: 15, color: C.medium },
@@ -269,14 +276,14 @@ const Analytics = () => {
       name, value,
       color: name === 'CRITICAL' ? C.critical : name === 'HIGH' ? C.high : name === 'MEDIUM' ? C.medium : C.low,
     }));
-  }, [filteredAnomalies]);
+  }, [filteredAnomalies, deviceFilter]);
 
   // ── Top threat types ───────────────────────────────────────────────────────
   const threats = useMemo(() => {
     const c: Record<string, number> = {};
     filteredAnomalies.forEach(a => { if (a.threat_type) c[a.threat_type] = (c[a.threat_type] || 0) + 1; });
-    const isMock = localStorage.getItem('sentinel_username') === 'testuser';
-    if (!Object.keys(c).length && isMock) return [
+    const isGlobalMock = !deviceFilter;
+    if (!Object.keys(c).length && isGlobalMock) return [
       { name: 'Brute Force',          count: 18 },
       { name: 'C2 Outbound',          count: 12 },
       { name: 'Privilege Escalation', count: 9  },
@@ -286,18 +293,20 @@ const Analytics = () => {
       { name: 'Data Exfil',           count: 2  },
     ];
     return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([name, count]) => ({ name, count }));
-  }, [filteredAnomalies]);
+  }, [filteredAnomalies, deviceFilter]);
 
   // ── Anomaly scatter ────────────────────────────────────────────────────────
-  const scatter = useMemo(() =>
-    filteredAnomalies.map((a, i) => ({
+  const scatter = useMemo(() => {
+    const isGlobalMock = !deviceFilter;
+    if (filteredAnomalies.length === 0 && !isGlobalMock) return [];
+    
+    return filteredAnomalies.map((a, i) => ({
       x: i,
       y: a.severity_score ?? parseFloat(seed(i, 0.2, 0.75).toFixed(2)),
       label: a.threat_type || 'Unknown',
       severity: a.severity_label,
-    })),
-    [filteredAnomalies]
-  );
+    }));
+  }, [filteredAnomalies, deviceFilter]);
 
   const handleExport = async () => {
     try {

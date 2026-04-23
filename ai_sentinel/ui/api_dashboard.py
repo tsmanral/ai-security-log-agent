@@ -20,14 +20,14 @@ from ai_sentinel.ui.utils.report_generator import generate_report
 router = APIRouter(tags=["dashboard"])
 
 @router.get("/kpis")
-async def api_kpis(user: dict = Depends(require_role("ADMIN", "ANALYST", "VIEWER"))):
+async def api_kpis(device_id: Optional[str] = None, user: dict = Depends(require_role("ADMIN", "ANALYST", "VIEWER"))):
     uid = user["user_id"] if user["role"] != "ADMIN" else None
-    return get_dashboard_kpis(user_id=uid)
+    return get_dashboard_kpis(user_id=uid, device_id=device_id)
 
 @router.get("/anomalies")
-async def api_anomalies(limit: int = 50, user: dict = Depends(require_role("ADMIN", "ANALYST", "VIEWER"))):
+async def api_anomalies(limit: int = 50, device_id: Optional[str] = None, user: dict = Depends(require_role("ADMIN", "ANALYST", "VIEWER"))):
     uid = user["user_id"] if user["role"] != "ADMIN" else None
-    return get_dashboard_recent_anomalies(limit=limit, user_id=uid)
+    return get_dashboard_recent_anomalies(limit=limit, user_id=uid, device_id=device_id)
 
 @router.get("/events")
 async def api_events(limit: int = 1000, user: dict = Depends(require_role("ADMIN", "ANALYST", "VIEWER"))):

@@ -11,6 +11,7 @@ const BUILTIN_INTEL: Record<string, any> = {
 };
 
 const ThreatIntel = () => {
+  const isTest = localStorage.getItem('sentinel_username') === 'testuser';
   const [searchParams] = useSearchParams();
   const initialIp = searchParams.get('ip') || '';
   
@@ -27,8 +28,13 @@ const ThreatIntel = () => {
   const handleLookup = (ipToLookup: string = searchIp) => {
     if (!ipToLookup) return;
     setLoading(true);
-    // Simulate API call for intel
+    // Simulate API call for intel for test user
     setTimeout(() => {
+      if (!isTest) {
+        setCurrentIntel(null);
+        setLoading(false);
+        return;
+      }
       if (BUILTIN_INTEL[ipToLookup]) {
         setCurrentIntel({ ip: ipToLookup, ...BUILTIN_INTEL[ipToLookup] });
       } else {
@@ -48,15 +54,15 @@ const ThreatIntel = () => {
     }, 500);
   };
 
-  const mockCachedIntel = Object.entries(BUILTIN_INTEL).map(([ip, data]) => ({ ip, ...data }));
+  const mockCachedIntel = isTest ? Object.entries(BUILTIN_INTEL).map(([ip, data]) => ({ ip, ...data })) : [];
   
-  const topAnomalousIps = [
+  const topAnomalousIps = isTest ? [
     { ip: '185.15.202.13', count: 423, severity: 0.9 },
     { ip: '45.33.32.156', count: 312, severity: 0.8 },
     { ip: '103.20.150.2', count: 145, severity: 0.85 },
     { ip: '89.187.160.10', count: 89, severity: 0.65 },
     { ip: '192.168.1.45', count: 45, severity: 0.4 },
-  ];
+  ] : [];
 
   return (
     <div className="flex flex-col h-full space-y-8 overflow-y-auto pb-10 pr-2 custom-scrollbar">

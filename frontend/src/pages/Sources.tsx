@@ -20,11 +20,18 @@ const Sources = () => {
 
   useEffect(() => {
     getDevices().then(r => {
+      let data = r?.data || [];
+      if (isTest && data.length === 0) {
+        data = [
+          { id: '8a4be99a-200e-4511-a35c-264e0ce69aa8', source_type: 'Linux', ip_address: '192.168.1.45', os_type: 'Ubuntu 22.04', is_active: true, last_seen: new Date().toISOString() },
+          { id: 'b997415c-9653-4f45-87bf-f4a84d936f76', source_type: 'Windows', ip_address: '10.0.0.12', os_type: 'Windows Server 2022', is_active: true, last_seen: new Date().toISOString() }
+        ];
+      }
       // Sync with real DB data
-      if (Array.isArray(r?.data)) {
+      if (Array.isArray(data)) {
         // If it's a real user, always use the DB result even if it's 0 devices.
-        if (r.data.length > 0 || !isTest) {
-          const mapped = r.data.map((d: any) => ({
+        if (data.length > 0 || !isTest) {
+          const mapped = data.map((d: any) => ({
             id: d.device_id || d.id,
             type: d.source_type || 'Unknown',
             ip: d.ip_address || '—',

@@ -16,20 +16,19 @@ const osGroup = (os: string) =>
   os?.toLowerCase().includes('zeek') || os?.toLowerCase().includes('network') ? 'Network' : 'Other';
 
 const SEED: any[] = [
-  { device_id:'AGT-WIN-01', source_type:'Windows Event Log', ip_address:'10.0.5.22',  is_active:true,  last_seen:new Date(Date.now()-2000).toISOString(),     os_type:'Windows Server 2022' },
-  { device_id:'AGT-WIN-02', source_type:'Windows Event Log', ip_address:'10.0.5.23',  is_active:false, last_seen:new Date(Date.now()-50400000).toISOString(), os_type:'Windows 10 Pro' },
-  { device_id:'AGT-LIN-01', source_type:'Syslog / Auth',    ip_address:'45.33.2.1',  is_active:true,  last_seen:new Date(Date.now()-12000).toISOString(),    os_type:'Ubuntu 22.04' },
-  { device_id:'AGT-LIN-02', source_type:'Syslog / Auth',    ip_address:'10.0.1.15',  is_active:true,  last_seen:new Date(Date.now()-5000).toISOString(),     os_type:'CentOS 8' },
-  { device_id:'AGT-LIN-03', source_type:'Syslog / Auth',    ip_address:'10.0.1.22',  is_active:true,  last_seen:new Date(Date.now()-8000).toISOString(),     os_type:'Ubuntu 20.04' },
-  { device_id:'AGT-NET-01', source_type:'Zeek Network',     ip_address:'192.168.1.1',is_active:true,  last_seen:new Date(Date.now()-240000).toISOString(),   os_type:'Zeek 6.0' },
+  { device_id: '8a4be99a-200e-4511-a35c-264e0ce69aa8', source_type: 'Linux Syslog',     ip_address: '192.168.1.45', is_active: true, last_seen: new Date().toISOString(), os_type: 'Ubuntu 22.04 (Linux)' },
+  { device_id: 'b997415c-9653-4f45-87bf-f4a84d936f76', source_type: 'Windows Event Log', ip_address: '10.0.0.12',    is_active: true, last_seen: new Date().toISOString(), os_type: 'Windows Server 2022' },
+  { device_id: 'net-edge-001',                      source_type: 'Zeek Network',      ip_address: '172.16.0.1',   is_active: true, last_seen: new Date().toISOString(), os_type: 'Zeek Network OS' },
+  { device_id: 'wks-112-pro',                       source_type: 'Windows Event Log', ip_address: '10.0.5.101',   is_active: true, last_seen: new Date().toISOString(), os_type: 'Windows 11 Pro' },
+  { device_id: 'WKS-112-X',                         source_type: 'Windows Event Log', ip_address: '10.0.5.22',    is_active: true, last_seen: new Date().toISOString(), os_type: 'Windows 10 Enterprise' },
+  { device_id: 'DC-01',                             source_type: 'Active Directory',  ip_address: '172.16.0.1',   is_active: true, last_seen: new Date().toISOString(), os_type: 'Windows Server (AD)' },
+  { device_id: 'APP-SRV-02',                        source_type: 'Linux Syslog',      ip_address: '45.33.2.1',    is_active: true, last_seen: new Date().toISOString(), os_type: 'Ubuntu Linux 20.04' },
 ];
-
-// Global filter key handled by api.ts saveActiveDeviceFilter
 
 const DeviceBehavior = () => {
   const navigate = useNavigate();
   const isTest = localStorage.getItem('sentinel_username') === 'testuser';
-  const [devices, setDevices]   = useState<any[]>(isTest ? SEED : []);
+  const [devices, setDevices]   = useState<any[]>([]); // Start empty, fill from API or SEED
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeGroup, setActiveGroup] = useState<string>('All');
   const [saved, setSaved]       = useState(false);
@@ -38,21 +37,41 @@ const DeviceBehavior = () => {
   const [filterActive, setFilterActive] = useState(false);
 
   useEffect(() => {
-    getDevices().then(r => {
-      // Always update devices if data is returned, even if empty (unless testuser)
-      if (Array.isArray(r?.data)) {
-        if (r.data.length > 0 || !isTest) {
-          setDevices(r.data.map((d: any) => ({
-            device_id: d.device_id || d.id, source_type: d.source_type || 'Unknown',
-            ip_address: d.ip_address || '—', is_active: d.is_active, last_seen: d.last_seen, os_type: d.os_type || '—',
-          })));
-        }
-      }
-    }).catch(() => {});
     const user = localStorage.getItem('sentinel_username') || 'anon';
     const key = `sentinel_device_filter_${user}`;
     const saved = localStorage.getItem(key);
-    if (saved) { setSelected(new Set(JSON.parse(saved))); setFilterActive(true); }
+    
+    getDevices().then(r => {
+      let currentDevices: any[] = [];
+      if (Array.isArray(r?.data) && r.data.length > 0) {
+        currentDevices = r.data.map((d: any) => ({
+          device_id: d.id || d.device_id, source_type: d.source_type || 'Unknown',
+          ip_address: d.ip_address || '—', is_active: d.is_active, last_seen: d.last_seen, os_type: d.os_type || '—',
+        }));
+      } else if (isTest) {
+        currentDevices = SEED;
+      }
+      setDevices(currentDevices);
+
+      // Validate saved filter against actual devices
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const validIds = new Set(currentDevices.map(d => d.device_id));
+        const filtered = parsed.filter((id: string) => validIds.has(id));
+        
+        if (filtered.length > 0) {
+          setSelected(new Set(filtered));
+          setFilterActive(true);
+        } else {
+          // If none of the saved IDs are valid, clear it
+          setSelected(new Set());
+          setFilterActive(false);
+          localStorage.removeItem(key);
+        }
+      }
+    }).catch(() => { 
+      if (isTest) setDevices(SEED); 
+    });
   }, []);
 
   const toggle = (id: string) =>
