@@ -90,6 +90,9 @@ REGISTRATION_TOKEN_LIFETIME_MINUTES: int = 15  # single-use, short-lived
 # ---------------------------------------------------------------------------
 RATE_LIMIT_REGISTER_PER_MIN: int = 5   # POST /api/devices/register per IP
 RATE_LIMIT_EVENTS_PER_MIN: int = 60    # POST /api/events/batch per device
+# Max distinct rate-limit keys (devices / IPs) tracked before LRU eviction —
+# bounds memory against dead or spoofed identifiers. (§6 #5)
+RATE_LIMIT_MAX_KEYS: int = int(os.getenv("SENTINEL_RATE_LIMIT_MAX_KEYS", "10000"))
 
 # ---------------------------------------------------------------------------
 # Input Validation Caps
