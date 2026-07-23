@@ -5,7 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, ZAxis
 } from 'recharts';
-import { getKpis, getAnomalies, getIncidents, exportReport, getIngestionStats } from '../services/api';
+import { getKpis, getAnomalies, getIncidents, exportReport, getIngestionStats, saveActiveDeviceFilter } from '../services/api';
 import DataDrawer from '../components/DataDrawer'; import type { DrawerType } from '../components/DataDrawer';
 import {
   Activity, Database, TrendingUp, BarChart3,
@@ -311,9 +311,10 @@ const Analytics = () => {
   const handleExport = async () => {
     try {
       const res = await exportReport();
+      if (!res) return;
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
-      link.href = url; link.download = 'ai_sentinel_report.pdf';
+      link.href = url; link.download = 'lsadra_report.pdf';
       document.body.appendChild(link); link.click(); link.remove();
     } catch { /**/ }
   };

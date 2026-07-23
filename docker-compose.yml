@@ -1,4 +1,4 @@
-# AI-Sentinel V3 — Docker Compose
+# LSADRA V3 — Docker Compose
 # Production configuration with API, Dashboard, and Agent Simulator services.
 
 version: "3.9"
@@ -7,7 +7,7 @@ services:
   # ── API Server ──────────────────────────────────────────────────────────
   api:
     build: .
-    container_name: ai-sentinel-api
+    container_name: lsadra-api
     ports:
       - "${API_PORT:-8000}:8000"
     environment:
@@ -32,9 +32,9 @@ services:
   # ── Streamlit Dashboard ─────────────────────────────────────────────────
   dashboard:
     build: .
-    container_name: ai-sentinel-dashboard
+    container_name: lsadra-dashboard
     command: >
-      streamlit run ai_sentinel/ui/dashboard.py
+      streamlit run lsadra/ui/dashboard.py
       --server.port=8501
       --server.address=0.0.0.0
       --server.headless=true
@@ -53,7 +53,7 @@ services:
   # ── Agent Simulator ────────────────────────────────────────────────────
   agent-sim:
     build: .
-    container_name: ai-sentinel-agent-sim
+    container_name: lsadra-agent-sim
     command: >
       python -c "
       import time, requests, sys;

@@ -37,7 +37,7 @@ const LiveStream = () => {
       try {
         const [anomRes] = await Promise.all([getAnomalies()]);
         if (events.length === 0) {
-          setEvents(anomRes.data || []);
+          setEvents(anomRes?.data || []);
         }
       } catch (err) { console.error("Failed to fetch live stream", err); }
     };

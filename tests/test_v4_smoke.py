@@ -1,5 +1,5 @@
 """
-AI-Sentinel V4 — Local smoke test.
+LSADRA V4 — Local smoke test.
 
 Tests:
   1. All new V4 parsers (can_parse + parse)
@@ -52,13 +52,13 @@ def section(title):
 section("1. V4 Parser imports & basic parsing")
 
 try:
-    from ai_sentinel.ingestion.base_parser import BaseParser, REQUIRED_SCHEMA_FIELDS
+    from lsadra.ingestion.base_parser import BaseParser, REQUIRED_SCHEMA_FIELDS
     ok("base_parser import")
 except Exception as e:
     fail("base_parser import", e)
 
 try:
-    from ai_sentinel.ingestion.syslog_parser import SyslogParser
+    from lsadra.ingestion.syslog_parser import SyslogParser
     p = SyslogParser()
     line = "Jan  5 12:34:56 hostname sudo[1234]: root : COMMAND=/bin/bash"
     assert p.can_parse(line), "can_parse should return True"
@@ -71,7 +71,7 @@ except Exception as e:
     fail("SyslogParser", e)
 
 try:
-    from ai_sentinel.ingestion.windows_event_parser import WindowsEventParser
+    from lsadra.ingestion.windows_event_parser import WindowsEventParser
     p = WindowsEventParser()
     line = "4625|2024-01-01T12:00:00|jsmith|192.168.1.1||"
     assert p.can_parse(line), "can_parse should return True"
@@ -84,7 +84,7 @@ except Exception as e:
     fail("WindowsEventParser", e)
 
 try:
-    from ai_sentinel.ingestion.network_flow_parser import NetworkFlowParser
+    from lsadra.ingestion.network_flow_parser import NetworkFlowParser
     p = NetworkFlowParser()
     line = "2024-01-01T12:00:00,192.168.1.100,10.0.0.5,54321,22,TCP,512,4"
     assert p.can_parse(line), "can_parse should return True"
@@ -96,7 +96,7 @@ except Exception as e:
     fail("NetworkFlowParser", e)
 
 try:
-    from ai_sentinel.ingestion.network_flow_parser import NetworkFlowParser
+    from lsadra.ingestion.network_flow_parser import NetworkFlowParser
     p = NetworkFlowParser()
     line = "Jan  5 12:00:00 IN=eth0 OUT= SRC=1.2.3.4 DST=5.6.7.8 PROTO=TCP SPT=12345 DPT=22"
     assert p.can_parse(line), "firewall line should be parseable"
@@ -108,7 +108,7 @@ except Exception as e:
     fail("NetworkFlowParser (iptables DENY)", e)
 
 try:
-    from ai_sentinel.ingestion.endpoint_parser import EndpointParser
+    from lsadra.ingestion.endpoint_parser import EndpointParser
     p = EndpointParser()
     line = "2024-01-01T12:00:00|dev-001|jsmith|powershell.exe|winword.exe|powershell -enc dQBuAGkA|C:\\Windows\\Temp|process_create"
     assert p.can_parse(line), "endpoint line should be parseable"
@@ -127,7 +127,7 @@ except Exception as e:
 section("2. IngestionManager auto-routing")
 
 try:
-    from ai_sentinel.ingestion.ingestion_manager import IngestionManager
+    from lsadra.ingestion.ingestion_manager import IngestionManager
     mgr = IngestionManager()
     assert len(mgr.parsers) >= 5
     ok("IngestionManager instantiation")
@@ -168,7 +168,7 @@ section("3. Enhanced feature extraction")
 
 try:
     import pandas as pd
-    from ai_sentinel.features.feature_extractor import build_enhanced_feature_table
+    from lsadra.features.feature_extractor import build_enhanced_feature_table
     from datetime import datetime, timedelta
 
     rows = []
@@ -202,7 +202,7 @@ except Exception as e:
 section("4. V4 Rule engine")
 
 try:
-    from ai_sentinel.detection.rule_engine import evaluate_rules, evaluate_all_v4_rules
+    from lsadra.detection.rule_engine import evaluate_rules, evaluate_all_v4_rules
 
     # V3 preserved
     name, mitre = evaluate_rules({
@@ -234,7 +234,7 @@ except Exception as e:
     traceback.print_exc()
 
 try:
-    from ai_sentinel.detection.rule_engine import check_port_scan
+    from lsadra.detection.rule_engine import check_port_scan
     alert = check_port_scan({
         "source_ip": "10.0.0.1",
         "source_type": "network_flow",
@@ -252,7 +252,7 @@ except Exception as e:
 section("5. Dynamic severity scoring")
 
 try:
-    from ai_sentinel.detection.severity import compute_severity_score, calculate_dynamic_severity
+    from lsadra.detection.severity import compute_severity_score, calculate_dynamic_severity
 
     score, label = compute_severity_score(layer1_z=8.0, layer2_score=0.9, layer2_votes=3, total_models=3, layer3_error=0.4)
     assert 0.0 <= score <= 1.0
@@ -282,7 +282,7 @@ except Exception as e:
 section("6. Narrative engine")
 
 try:
-    from ai_sentinel.explainability.narrative_builder import NarrativeBuilder
+    from lsadra.explainability.narrative_builder import NarrativeBuilder
 
     text = NarrativeBuilder.build(
         threat_type="Brute Force Attack",
@@ -297,7 +297,7 @@ except Exception as e:
     fail("V3 NarrativeBuilder.build()", e)
 
 try:
-    from ai_sentinel.explainability.narrative_builder import generate_alert_narrative
+    from lsadra.explainability.narrative_builder import generate_alert_narrative
 
     narrative = generate_alert_narrative(
         features={
@@ -326,7 +326,7 @@ except Exception as e:
     traceback.print_exc()
 
 try:
-    from ai_sentinel.explainability.narrative_builder import analyze_false_positive
+    from lsadra.explainability.narrative_builder import analyze_false_positive
 
     result = analyze_false_positive(
         original_alert={
@@ -353,7 +353,7 @@ section("7. Database: migration + V4 CRUD")
 
 try:
     migration_sql = open(
-        r"ai_sentinel\storage\migrations\002_v4_schema.sql", "r"
+        r"lsadra\storage\migrations\002_v4_schema.sql", "r"
     ).read()
     conn = sqlite3.connect(":memory:")
     conn.executescript(migration_sql)
@@ -368,7 +368,7 @@ except Exception as e:
 
 try:
     import json, pathlib
-    from ai_sentinel.storage.database import (
+    from lsadra.storage.database import (
         store_feedback, get_false_positive_patterns,
         get_fp_rate_by_source_type, update_ingestion_stats, get_ingestion_stats,
     )
@@ -379,7 +379,7 @@ try:
     # Build a fully-bootstrapped connection and pass it directly to each helper
     conn = sqlite3.connect(tmp.name)
     conn.row_factory = sqlite3.Row
-    conn.executescript(open(r"ai_sentinel\storage\migrations\002_v4_schema.sql").read())
+    conn.executescript(open(r"lsadra\storage\migrations\002_v4_schema.sql").read())
     conn.execute("""CREATE TABLE IF NOT EXISTS ingestion_stats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         source_type TEXT NOT NULL UNIQUE,
@@ -419,7 +419,7 @@ except Exception as e:
 section("8. Scheduler V4 job registration")
 
 try:
-    from ai_sentinel.jobs import scheduler as sched_mod
+    from lsadra.jobs import scheduler as sched_mod
     # Just import and verify V4 job functions exist, don't actually start scheduler
     assert callable(sched_mod._run_cross_source_correlation)
     assert callable(sched_mod._run_lateral_movement_scan)
@@ -435,10 +435,10 @@ except Exception as e:
 section("9. UI page imports (no browser required)")
 
 for page_name, module_path in [
-    ("investigate", "ai_sentinel.ui.pages.investigate"),
-    ("multi_source", "ai_sentinel.ui.pages.multi_source"),
-    ("feedback",     "ai_sentinel.ui.pages.feedback"),
-    ("live_alerts",  "ai_sentinel.ui.pages.live_alerts"),
+    ("investigate", "lsadra.ui.pages.investigate"),
+    ("multi_source", "lsadra.ui.pages.multi_source"),
+    ("feedback",     "lsadra.ui.pages.feedback"),
+    ("live_alerts",  "lsadra.ui.pages.live_alerts"),
 ]:
     try:
         import importlib
@@ -459,7 +459,7 @@ for page_name, module_path in [
 section("10. Config V4 keys")
 
 try:
-    from ai_sentinel import config as cfg
+    from lsadra import config as cfg
     assert hasattr(cfg, "BRUTE_FORCE_5MIN_CRITICAL")
     assert hasattr(cfg, "PORT_SCAN_CRITICAL_THRESHOLD")
     assert hasattr(cfg, "LARGE_TRANSFER_BYTES")

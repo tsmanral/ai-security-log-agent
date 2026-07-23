@@ -1,5 +1,5 @@
 """
-AI-Sentinel V3 — API endpoint tests.
+LSADRA V3 — API endpoint tests.
 
 Tests for FastAPI endpoints including health, auth, heartbeat,
 incident management, and admin retrain.
@@ -38,7 +38,7 @@ class TestHealthEndpoints:
     def test_api_health(self, client):
         response = client.get("/api/health")
         assert response.status_code == 200
-        assert response.json()["service"] == "ai-sentinel-api"
+        assert response.json()["service"] == "lsadra-api"
 
 
 class TestAuthEndpoints:
@@ -53,8 +53,8 @@ class TestAuthEndpoints:
 
     def test_login_success(self, client):
         # Create a user first
-        from ai_sentinel.auth import hash_password
-        from ai_sentinel.storage.database import create_user
+        from lsadra.auth import hash_password
+        from lsadra.storage.database import create_user
 
         create_user("test-id", "testuser", hash_password("testpass"), "ANALYST")
 
@@ -79,7 +79,7 @@ class TestHeartbeatEndpoint:
 
     def test_heartbeat_success(self, client):
         # Create user and device
-        from ai_sentinel.storage.database import create_user, create_device
+        from lsadra.storage.database import create_user, create_device
 
         create_user("user-1", "testuser", "hash", "ANALYST")
         create_device("device-1", "user-1", "test-host", "linux", "apikey")
@@ -109,8 +109,8 @@ class TestIncidentEndpoints:
 
     def test_admin_retrain_analyst_forbidden(self, client):
         # Create analyst user and get token
-        from ai_sentinel.auth import create_access_token, hash_password
-        from ai_sentinel.storage.database import create_user
+        from lsadra.auth import create_access_token, hash_password
+        from lsadra.storage.database import create_user
 
         create_user("analyst-1", "analyst", hash_password("pass"), "ANALYST")
         token = create_access_token("analyst-1", "analyst", "ANALYST")
@@ -122,8 +122,8 @@ class TestIncidentEndpoints:
         assert response.status_code == 403
 
     def test_admin_retrain_admin_accepted(self, client):
-        from ai_sentinel.auth import create_access_token, hash_password
-        from ai_sentinel.storage.database import create_user
+        from lsadra.auth import create_access_token, hash_password
+        from lsadra.storage.database import create_user
 
         create_user("admin-1", "admin", hash_password("pass"), "ADMIN")
         token = create_access_token("admin-1", "admin", "ADMIN")

@@ -1,5 +1,5 @@
 """
-AI-Sentinel V3 — FastAPI server (primary V3 entrypoint).
+LSADRA V3 — FastAPI server (primary V3 entrypoint).
 """
 
 import logging
@@ -13,16 +13,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from ai_sentinel.auth import (
+from lsadra.auth import (
     create_access_token,
     get_current_user,
     require_role,
     verify_password,
 )
-from ai_sentinel.config import REQUIRE_TLS
-from ai_sentinel.ingestion.api_ingestion import router as events_router
-from ai_sentinel.onboarding.device_registration import router as devices_router
-from ai_sentinel.storage.database import (
+from lsadra.config import REQUIRE_TLS
+from lsadra.ingestion.api_ingestion import router as events_router
+from lsadra.onboarding.device_registration import router as devices_router
+from lsadra.storage.database import (
     get_all_incidents,
     get_device,
     get_incident,
@@ -34,8 +34,8 @@ from ai_sentinel.storage.database import (
     update_incident_status,
     assign_incident as db_assign_incident,
 )
-from ai_sentinel.tls_middleware import TLSEnforcementMiddleware
-from ai_sentinel.ui.api_dashboard import router as dashboard_router
+from lsadra.tls_middleware import TLSEnforcementMiddleware
+from lsadra.ui.api_dashboard import router as dashboard_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -44,15 +44,15 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle events for FastAPI."""
-    logger.info("Initializing AI-Sentinel V3 Backend...")
+    logger.info("Initializing LSADRA V3 Backend...")
     init_db()
     Path("data/models").mkdir(parents=True, exist_ok=True)
     yield
-    logger.info("Shutting down AI-Sentinel V3 Backend...")
+    logger.info("Shutting down LSADRA V3 Backend...")
 
 
 app = FastAPI(
-    title="AI-Sentinel V3 API",
+    title="LSADRA V3 API",
     lifespan=lifespan,
 )
 
@@ -71,11 +71,11 @@ app.add_middleware(
 
 # ── Static Files ─────────────────────────────────────────────────────────
 
-STATIC_DIR = Path(__file__).parent / "ai_sentinel" / "onboarding"
+STATIC_DIR = Path(__file__).parent / "lsadra" / "onboarding"
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-AGENT_DIR = Path(__file__).parent / "ai_sentinel" / "endpoint_agent"
+AGENT_DIR = Path(__file__).parent / "lsadra" / "endpoint_agent"
 if AGENT_DIR.exists():
     app.mount("/agent", StaticFiles(directory=str(AGENT_DIR)), name="agent")
 
@@ -93,7 +93,7 @@ app.include_router(dashboard_router, prefix="/api/dashboard")
 @app.get("/", tags=["system"])
 async def root():
     return {
-        "service": "AI-Sentinel V3 Core",
+        "service": "LSADRA V3 Core",
         "timestamp": datetime.now().isoformat(),
         "status": "online",
     }
@@ -101,7 +101,7 @@ async def root():
 
 @app.get("/api/health", tags=["health"])
 async def api_health():
-    return {"status": "ok", "service": "ai-sentinel-api", "version": "3.0.0"}
+    return {"status": "ok", "service": "lsadra-api", "version": "3.0.0"}
 
 
 # ── Auth endpoints ───────────────────────────────────────────────────────
@@ -142,8 +142,8 @@ class RegisterRequest(BaseModel):
 
 @app.post("/api/auth/register", tags=["auth"])
 async def register(req: RegisterRequest):
-    from ai_sentinel.storage.database import create_user
-    from ai_sentinel.auth import hash_password
+    from lsadra.storage.database import create_user
+    from lsadra.auth import hash_password
     import uuid
 
     existing = get_user_by_username(req.username)
@@ -247,9 +247,9 @@ async def retrain_models(
 ):
     def _do_retrain():
         try:
-            from ai_sentinel.detection.detection_orchestrator import DetectionOrchestrator
-            from ai_sentinel.features.feature_extractor import build_features
-            from ai_sentinel.storage.database import get_connection
+            from lsadra.detection.detection_orchestrator import DetectionOrchestrator
+            from lsadra.features.feature_extractor import build_features
+            from lsadra.storage.database import get_connection
 
             conn = get_connection()
             rows = conn.execute(
@@ -274,7 +274,7 @@ async def retrain_models(
     return {"status": "accepted", "message": "Started."}
 
 
-from ai_sentinel.ui.api_dashboard import router as dashboard_router
+from lsadra.ui.api_dashboard import router as dashboard_router
 app.include_router(dashboard_router, prefix="/api/dashboard")
 
 if __name__ == "__main__":

@@ -1,12 +1,12 @@
-# AI-Sentinel V3 vs. V4: Technical & Architectural Evolution
+# LSADRA V3 vs. V4: Technical & Architectural Evolution
 
-This document details the comprehensive evolution of the AI-Sentinel platform from the V3 prototype to the V4 Enterprise-Grade production baseline.
+This document details the comprehensive evolution of the LSADRA platform from the V3 prototype to the V4 Enterprise-Grade production baseline.
 
 ---
 
 ## 1. Technology Stack Evolution
 
-| Category | AI-Sentinel V3 | AI-Sentinel V4 |
+| Category | LSADRA V3 | LSADRA V4 |
 | :--- | :--- | :--- |
 | **Frontend Framework** | Streamlit (Python-based) | **React 18 + Vite (TypeScript)** |
 | **Styling** | Native Streamlit Components | **Tailwind CSS + Lucide Icons** |
@@ -33,7 +33,7 @@ This document details the comprehensive evolution of the AI-Sentinel platform fr
 
 ## 3. Data Ingestion & Normalization
 
-| Feature | AI-Sentinel V3 | AI-Sentinel V4 |
+| Feature | LSADRA V3 | LSADRA V4 |
 | :--- | :--- | :--- |
 | **Source Variety** | Primarily Linux SSH (auth.log) | **Multi-Source (Syslog, Windows, Network, Endpoint)** |
 | **Parsing Logic** | Rigid Regex for SSH | **Modular Parser Interface (BaseParser ABC)** |
@@ -60,7 +60,7 @@ This document details the comprehensive evolution of the AI-Sentinel platform fr
 
 ## 5. Incident Management & Response
 
-| Feature | AI-Sentinel V3 | AI-Sentinel V4 |
+| Feature | LSADRA V3 | LSADRA V4 |
 | :--- | :--- | :--- |
 | **Grouping** | Basic time-window clustering | **Entity-Relation Mapping (IP, User, Host)** |
 | **Visualization** | Static DataTables | **Force-Directed Graphs & Interactive Timelines** |
@@ -81,4 +81,4 @@ This document details the comprehensive evolution of the AI-Sentinel platform fr
 
 ## 7. Summary of the V4 "Quantum Leap"
 
-AI-Sentinel V4 transforms the project from a **research prototype** into a **deployable security platform**. The transition to React/TypeScript removes the "Streamlit bottleneck," allowing for the high-density data visualizations and interactive automation tools required by professional SOC analysts.
+LSADRA V4 transforms the project from a **research prototype** into a **deployable security platform**. The transition to React/TypeScript removes the "Streamlit bottleneck," allowing for the high-density data visualizations and interactive automation tools required by professional SOC analysts.

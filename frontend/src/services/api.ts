@@ -55,7 +55,7 @@ export const generateEventStream = (count = 200, deviceFilter?: string[]): any[]
       severity: sev,
       host: host,
       source_ip: `192.168.1.${10 + Math.floor(Math.random() * 200)}`,
-      raw_message: `AI-Sentinel Alert: Detected potential ${type.toLowerCase()} activity on ${host}.`,
+      raw_message: `LSADRA Alert: Detected potential ${type.toLowerCase()} activity on ${host}.`,
       status: 'OPEN'
     });
   }
@@ -458,7 +458,7 @@ Resolution Rate:         ${((closed.length / 15) * 100).toFixed(1)}%
 
 2. RESOLUTION DETAILS
 --------------------------------------------------------------------------------
-The following incidents were remediated via AI-Sentinel Playbooks:
+The following incidents were remediated via LSADRA Playbooks:
 ${closed.map(id => ` - [${id}] Status: RESOLVED (${custom[id]?.playbook || 'Standard Playbook'}) @ ${custom[id]?.timestamp || 'N/A'}`).join('\n')}
 
 3. SYSTEM HEALTH & TELEMETRY

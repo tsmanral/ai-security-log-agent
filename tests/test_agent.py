@@ -1,5 +1,5 @@
 """
-AI-Sentinel V3 — Agent behavior tests.
+LSADRA V3 — Agent behavior tests.
 
 Tests for the agent simulator configuration generation and
 heartbeat behavior.
@@ -40,7 +40,7 @@ class TestDatabaseOperations:
     """Tests for database CRUD operations used by the agent."""
 
     def test_insert_and_retrieve_event(self):
-        from ai_sentinel.storage.database import (
+        from lsadra.storage.database import (
             create_user, create_device, insert_event, get_events_since,
         )
 
@@ -57,7 +57,7 @@ class TestDatabaseOperations:
         assert events[0]["source_ip"] == "192.168.1.100"
 
     def test_device_lifecycle(self):
-        from ai_sentinel.storage.database import (
+        from lsadra.storage.database import (
             create_user,
             create_device,
             get_device,
@@ -81,7 +81,7 @@ class TestDatabaseOperations:
         assert device["status"] == "ONLINE"
 
     def test_heartbeat_storage(self):
-        from ai_sentinel.storage.database import (
+        from lsadra.storage.database import (
             create_user,
             create_device,
             insert_heartbeat,
@@ -98,7 +98,7 @@ class TestDatabaseOperations:
         assert hb["agent_version"] == "3.0.0"
 
     def test_incident_creation_and_update(self):
-        from ai_sentinel.storage.database import (
+        from lsadra.storage.database import (
             create_user, create_device,
             create_incident,
             get_incident,

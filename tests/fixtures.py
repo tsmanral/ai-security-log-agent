@@ -1,5 +1,5 @@
 """
-AI-Sentinel V3 — Test fixtures.
+LSADRA V3 — Test fixtures.
 
 Provides reusable mock objects and test data for the test suite.
 """
@@ -197,13 +197,13 @@ def make_mock_abuseipdb_response(confidence_score: int = 85) -> MagicMock:
 
 def setup_test_db(tmp_path):
     """
-    Configure AI-Sentinel to use a temporary test database.
+    Configure LSADRA to use a temporary test database.
 
     Must be called before any database operations in a test.
     Patches the DB_PATH at the module level in both config and database modules.
     """
-    import ai_sentinel.config as config
-    import ai_sentinel.storage.database as db_module
+    import lsadra.config as config
+    import lsadra.storage.database as db_module
 
     test_db_path = tmp_path / "test_sentinel.db"
     test_model_dir = tmp_path / "models"
@@ -217,5 +217,5 @@ def setup_test_db(tmp_path):
     # Also patch the DB_PATH used inside the database module (it imports at top)
     db_module.DB_PATH = test_db_path
 
-    from ai_sentinel.storage.database import init_db
+    from lsadra.storage.database import init_db
     init_db()

@@ -1,4 +1,4 @@
-# AI-Sentinel V3 — Docker Compose Override (Development)
+# LSADRA V3 — Docker Compose Override (Development)
 # Enables hot-reload, mounts source code, and enables debug logging.
 
 version: "3.9"
@@ -15,7 +15,7 @@ services:
 
   dashboard:
     command: >
-      streamlit run ai_sentinel/ui/dashboard.py
+      streamlit run lsadra/ui/dashboard.py
       --server.port=8501
       --server.address=0.0.0.0
       --server.headless=true

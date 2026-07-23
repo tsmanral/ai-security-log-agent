@@ -1,5 +1,5 @@
 """
-AI-Sentinel V3 — Detection pipeline tests.
+LSADRA V3 — Detection pipeline tests.
 
 Tests for severity scoring, ensemble voting, rule engine,
 incident management, and the detection orchestrator.
@@ -22,7 +22,7 @@ class TestSeverityScoring:
     """Tests for the severity scoring module."""
 
     def test_compute_severity_basic(self):
-        from ai_sentinel.detection.severity import compute_severity_score
+        from lsadra.detection.severity import compute_severity_score
 
         score, label = compute_severity_score(
             layer1_z=5.0, layer2_score=0.8, layer2_votes=3,
@@ -32,7 +32,7 @@ class TestSeverityScoring:
         assert label in ("CRITICAL", "HIGH", "MEDIUM", "LOW")
 
     def test_high_severity(self):
-        from ai_sentinel.detection.severity import compute_severity_score
+        from lsadra.detection.severity import compute_severity_score
 
         score, label = compute_severity_score(
             layer1_z=8.0, layer2_score=0.95, layer2_votes=3,
@@ -42,7 +42,7 @@ class TestSeverityScoring:
         assert label in ("CRITICAL", "HIGH")
 
     def test_low_severity(self):
-        from ai_sentinel.detection.severity import compute_severity_score
+        from lsadra.detection.severity import compute_severity_score
 
         score, label = compute_severity_score(
             layer1_z=0.5, layer2_score=0.1, layer2_votes=0,
@@ -52,14 +52,14 @@ class TestSeverityScoring:
         assert label == "LOW"
 
     def test_zero_inputs(self):
-        from ai_sentinel.detection.severity import compute_severity_score
+        from lsadra.detection.severity import compute_severity_score
 
         score, label = compute_severity_score()
         assert score == 0.0
         assert label == "LOW"
 
     def test_severity_context(self):
-        from ai_sentinel.detection.severity import severity_context
+        from lsadra.detection.severity import severity_context
 
         ctx = severity_context(0.85, "CRITICAL")
         assert ctx["severity_label"] == "CRITICAL"
@@ -70,7 +70,7 @@ class TestRuleEngine:
     """Tests for the heuristic rule engine."""
 
     def test_brute_force_detection(self):
-        from ai_sentinel.detection.rule_engine import evaluate_rules
+        from lsadra.detection.rule_engine import evaluate_rules
 
         threat, mitre = evaluate_rules({
             "failures_15m": 25, "unique_users_15m": 2,
@@ -80,7 +80,7 @@ class TestRuleEngine:
         assert mitre == "T1110.001"
 
     def test_credential_stuffing(self):
-        from ai_sentinel.detection.rule_engine import evaluate_rules
+        from lsadra.detection.rule_engine import evaluate_rules
 
         threat, mitre = evaluate_rules({
             "failures_15m": 20, "unique_users_15m": 8,
@@ -90,7 +90,7 @@ class TestRuleEngine:
         assert mitre == "T1110.004"
 
     def test_off_hour_access(self):
-        from ai_sentinel.detection.rule_engine import evaluate_rules
+        from lsadra.detection.rule_engine import evaluate_rules
 
         threat, mitre = evaluate_rules({
             "failures_15m": 0, "unique_users_15m": 1,
@@ -104,7 +104,7 @@ class TestEnsembleVoting:
 
     def test_majority_vote_anomaly(self):
         """When 2/3 models flag anomaly, ensemble should too."""
-        from ai_sentinel.models.ensemble_model import EnsembleModel
+        from lsadra.models.ensemble_model import EnsembleModel
 
         ensemble = EnsembleModel()
         df = make_feature_matrix(n_rows=1)
@@ -142,7 +142,7 @@ class TestDriftDetection:
     """Tests for PSI drift detection."""
 
     def test_psi_no_drift(self):
-        from ai_sentinel.detection.drift_detector import _calculate_psi
+        from lsadra.detection.drift_detector import _calculate_psi
 
         np.random.seed(42)
         reference = np.random.normal(0, 1, 1000)
@@ -151,7 +151,7 @@ class TestDriftDetection:
         assert psi < 0.1  # No significant drift
 
     def test_psi_with_drift(self):
-        from ai_sentinel.detection.drift_detector import _calculate_psi
+        from lsadra.detection.drift_detector import _calculate_psi
 
         np.random.seed(42)
         reference = np.random.normal(0, 1, 1000)
@@ -170,7 +170,7 @@ class TestFeatureMatrix:
         assert df.shape[1] == 19
 
     def test_feature_columns_present(self):
-        from ai_sentinel.features.feature_extractor import FEATURE_COLS
+        from lsadra.features.feature_extractor import FEATURE_COLS
         df = make_feature_matrix()
         for col in FEATURE_COLS:
             assert col in df.columns

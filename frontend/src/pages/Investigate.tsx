@@ -261,7 +261,7 @@ const Investigate = () => {
                           localStorage.setItem('sentinel_custom_resolutions', JSON.stringify(custom));
                           
                           // Optimistic update
-                          setResults(prev => prev ? { ...prev, status: ns } : null);
+                          setResults((prev: any) => prev ? { ...prev, status: ns } : null);
                           window.dispatchEvent(new Event('sentinel_state_change'));
                           
                           // Then deep reload

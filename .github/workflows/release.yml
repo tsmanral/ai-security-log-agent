@@ -37,15 +37,15 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          # Fixed image name so the package survives the repo rename to LSAD
-          images: ghcr.io/${{ github.repository_owner }}/lsad
+          # Fixed image name so the package survives the repo rename to LSADRA
+          images: ghcr.io/${{ github.repository_owner }}/lsadra
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest
           labels: |
-            org.opencontainers.image.title=LSAD
-            org.opencontainers.image.description=LSAD - Local Security & Anomaly Detection
+            org.opencontainers.image.title=LSADRA
+            org.opencontainers.image.description=LSADRA - Local Security Anomaly Detection & Risk Assessment
             org.opencontainers.image.licenses=AGPL-3.0
 
       - name: Build and push

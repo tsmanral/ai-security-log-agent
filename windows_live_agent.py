@@ -68,7 +68,7 @@ def fetch_new_events(channel, last_id):
 
 def main():
     print("=" * 70)
-    print("\U0001f6e1\ufe0f  AI-Sentinel V4 \u2014 LIVE Windows Agent")
+    print("\U0001f6e1\ufe0f  LSADRA V4 \u2014 LIVE Windows Agent")
     print("=" * 70)
 
     # 1. Check if server is running
@@ -87,8 +87,8 @@ def main():
     # 2. Get DB Token
     print("\n2. Getting registration token...")
     try:
-        from ai_sentinel.storage.database import init_db, get_connection
-        from ai_sentinel.onboarding.token_manager import generate_token
+        from lsadra.storage.database import init_db, get_connection
+        from lsadra.onboarding.token_manager import generate_token
         init_db()
         conn = get_connection()
         cur = conn.cursor()
@@ -98,8 +98,8 @@ def main():
 
         if not row:
             print("   \u26a0\ufe0f  No users found. Creating a default admin user...")
-            from ai_sentinel.auth import hash_password
-            from ai_sentinel.storage.database import create_user
+            from lsadra.auth import hash_password
+            from lsadra.storage.database import create_user
             import uuid
             user_id = str(uuid.uuid4())
             create_user(user_id, "admin", hash_password("admin"), "ADMIN")

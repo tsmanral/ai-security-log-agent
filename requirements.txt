@@ -1,4 +1,4 @@
-# AI-Sentinel V3 — Python Dependencies
+# LSADRA V3 — Python Dependencies
 # Core
 pandas>=2.0.0
 scikit-learn>=1.2.0

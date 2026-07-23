@@ -1,12 +1,12 @@
 """
-AI-Sentinel V3 — Fleet Simulator
+LSADRA V3 — Fleet Simulator
 
 Simulates multiple devices to fully populate all dashboard tabs.
 Cleans the database on start so it generates a fresh view every time.
 
 Usage:
     1. Start the API server:  python -m uvicorn server:app --host 0.0.0.0 --port 8000
-    2. Start the dashboard:   python -m streamlit run ai_sentinel/ui/dashboard.py
+    2. Start the dashboard:   python -m streamlit run lsadra/ui/dashboard.py
     3. Run this simulator:    python fleet_simulator.py
 """
 
@@ -41,7 +41,7 @@ ATTACKER_IPS = [
 NORMAL_USERS = ["admin", "root", "ubuntu", "db_operator", "developer"]
 
 print("=" * 60)
-print("🚀 AI-Sentinel V3 Fleet Simulator")
+print("🚀 LSADRA V3 Fleet Simulator")
 print("=" * 60)
 
 # ── Step 1: Verify server is running ─────────────────────────────────────
@@ -60,7 +60,7 @@ except Exception:
 
 # ── Step 2: Wipe DB for fresh start ──────────────────────────────────────
 print("\n2. Cleaning database for a fresh run...")
-from ai_sentinel.storage.database import init_db, get_connection
+from lsadra.storage.database import init_db, get_connection
 init_db()
 
 conn = get_connection()
@@ -83,8 +83,8 @@ cur.execute("PRAGMA foreign_keys=ON")
 cur.execute("SELECT id FROM users LIMIT 1")
 row = cur.fetchone()
 if not row:
-    from ai_sentinel.auth import hash_password
-    from ai_sentinel.storage.database import create_user
+    from lsadra.auth import hash_password
+    from lsadra.storage.database import create_user
     admin_id = str(uuid.uuid4())
     create_user(admin_id, "admin", hash_password("admin"), "ADMIN")
     user_id = admin_id
@@ -95,7 +95,7 @@ print("   ✅ Database cleaned.")
 
 # ── Step 3: Register all devices ─────────────────────────────────────────
 print("\n3. Registering 5 devices...")
-from ai_sentinel.onboarding.token_manager import generate_token
+from lsadra.onboarding.token_manager import generate_token
 
 devices = []
 for profile in DEVICE_PROFILES:
@@ -203,7 +203,7 @@ for device in devices:
 # ── Step 6: Force metrics aggregation ────────────────────────────────────
 print("\n6. Forcing metrics aggregation...")
 try:
-    from ai_sentinel.storage.metrics_aggregator import run as run_metrics
+    from lsadra.storage.metrics_aggregator import run as run_metrics
     run_metrics()
     print("   ✅ Metrics aggregated for Analytics tab")
 except Exception as e:
@@ -267,7 +267,7 @@ def live_traffic(device):
 
             # Re-aggregate metrics after attack
             try:
-                from ai_sentinel.storage.metrics_aggregator import run as run_metrics
+                from lsadra.storage.metrics_aggregator import run as run_metrics
                 run_metrics()
             except Exception:
                 pass

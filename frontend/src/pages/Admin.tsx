@@ -91,7 +91,7 @@ const Admin = () => {
         fn: () => getHealth(),
         warnDetail: 'FastAPI backend at http://localhost:8000 is unreachable.',
         warnImpact: 'All live API calls will fail. Dashboard is running in Mock/Demo mode.',
-        warnFix: '1. Run: cd ai-security-log-agent && python main.py\n2. Ensure port 8000 is not blocked\n3. Check .env for correct HOST/PORT settings',
+        warnFix: '1. Run: cd lsadra && python main.py\n2. Ensure port 8000 is not blocked\n3. Check .env for correct HOST/PORT settings',
       },
       {
         name: 'Mock Auth — admin',
@@ -390,7 +390,7 @@ const Admin = () => {
             <span>TLS enforcement is disabled. Set <code>SENTINEL_REQUIRE_TLS=true</code> for production deployment.</span>
           </div>
           <div className="bg-[rgba(5,255,161,0.05)] border border-[rgba(5,255,161,0.2)] p-4 font-mono text-xs text-[#05FFA1] rounded">
-            Backend: FastAPI · DB: SQLite (AI-Sentinel V4) · ML: Ensemble + Autoencoder (2 models active)
+            Backend: FastAPI · DB: SQLite (LSADRA V4) · ML: Ensemble + Autoencoder (2 models active)
           </div>
         </div>
       )}

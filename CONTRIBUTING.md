@@ -1,6 +1,6 @@
-# Contributing to LSAD
+# Contributing to LSADRA
 
-Thank you for your interest in contributing to LSAD (Local Security & Anomaly Detection)! This project thrives on community contributions — code, detection rules, documentation, and bug reports are all welcome.
+Thank you for your interest in contributing to LSADRA (Local Security Anomaly Detection & Risk Assessment)! This project thrives on community contributions — code, detection rules, documentation, and bug reports are all welcome.
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@ Thank you for your interest in contributing to LSAD (Local Security & Anomaly De
 
 ## Architecture Overview
 
-LSAD is an explainable SIEM platform: a **FastAPI** backend with a multi-layer ML detection pipeline, a **React (Vite + TypeScript)** SOC dashboard, and lightweight endpoint agents.
+LSADRA is an explainable SIEM platform: a **FastAPI** backend with a multi-layer ML detection pipeline, a **React (Vite + TypeScript)** SOC dashboard, and lightweight endpoint agents.
 
 ### Key Technologies
 
@@ -38,13 +38,13 @@ LSAD is an explainable SIEM platform: a **FastAPI** backend with a multi-layer M
 
 | Directory | Purpose |
 |---|---|
-| `ai_sentinel/ingestion/` | Multi-source log parsers (Syslog, Windows Events, NetFlow, endpoint) + ingestion API |
-| `ai_sentinel/detection/` | Rule engine, ML ensemble, severity scoring, lateral-movement detection |
-| `ai_sentinel/explainability/` | SHAP attribution, MITRE ATT&CK mapping, narrative builder |
-| `ai_sentinel/storage/` | Database layer + SQL migrations |
-| `ai_sentinel/scheduler/` | Background job definitions |
-| `ai_sentinel/endpoint_agent/` | Linux agent (auth.log / journalctl auto-detection) |
-| `ai_sentinel/ui/` | Legacy Streamlit dashboard + dashboard data layer |
+| `lsadra/ingestion/` | Multi-source log parsers (Syslog, Windows Events, NetFlow, endpoint) + ingestion API |
+| `lsadra/detection/` | Rule engine, ML ensemble, severity scoring, lateral-movement detection |
+| `lsadra/explainability/` | SHAP attribution, MITRE ATT&CK mapping, narrative builder |
+| `lsadra/storage/` | Database layer + SQL migrations |
+| `lsadra/scheduler/` | Background job definitions |
+| `lsadra/endpoint_agent/` | Linux agent (auth.log / journalctl auto-detection) |
+| `lsadra/ui/` | Legacy Streamlit dashboard + dashboard data layer |
 | `frontend/` | React SOC dashboard |
 | `tests/` | Test suite + end-to-end smoke tests |
 | `datasets/` | Synthetic log generators for local experimentation |
@@ -54,8 +54,8 @@ LSAD is an explainable SIEM platform: a **FastAPI** backend with a multi-layer M
 1. **Fork** the repository on GitHub
 2. **Clone** your fork locally:
    ```bash
-   git clone https://github.com/<your-username>/LSAD.git
-   cd LSAD
+   git clone https://github.com/<your-username>/lsadra.git
+   cd lsadra
    ```
 3. **Create a feature branch** from `main`:
    ```bash
@@ -131,7 +131,7 @@ AI-assisted contributions (Copilot, Claude, ChatGPT, etc.) are welcome — much 
 
 ## Adding Detection Rules
 
-Detection rules live in the V4 rule engine (`ai_sentinel/detection/`). A good rule PR includes:
+Detection rules live in the V4 rule engine (`lsadra/detection/`). A good rule PR includes:
 
 1. The rule implementation with tunable thresholds (no magic numbers)
 2. A severity contribution that fits the existing additive scoring model
@@ -140,7 +140,7 @@ Detection rules live in the V4 rule engine (`ai_sentinel/detection/`). A good ru
 
 ## Adding Log Parsers
 
-Parsers live in `ai_sentinel/ingestion/`. New parsers should:
+Parsers live in `lsadra/ingestion/`. New parsers should:
 
 1. Extend the base parser interface
 2. Handle malformed input gracefully (never crash the pipeline on a bad line)

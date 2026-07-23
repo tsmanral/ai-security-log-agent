@@ -1,10 +1,10 @@
-# AI-Sentinel V4 Architecture
+# LSADRA V4 Architecture
 
-AI-Sentinel is a multi-layered, AI-native Security Information and Event Management (SIEM) system designed for real-time anomaly detection, threat hunting, and explainable AI-driven security narratives. V4 introduces a premium, reactive frontend architecture and automated remediation playbooks.
+LSADRA is a multi-layered, AI-native Security Information and Event Management (SIEM) system designed for real-time anomaly detection, threat hunting, and explainable AI-driven security narratives. V4 introduces a premium, reactive frontend architecture and automated remediation playbooks.
 
 ## 1. System Overview
 
-AI-Sentinel processing pipeline follows a tiered approach:
+LSADRA processing pipeline follows a tiered approach:
 1.  **Ingestion & Normalization:** High-throughput FastAPI layer for multi-source log ingestion.
 2.  **Feature Extraction:** Conversion of raw telemetry into structured behavioral features using Pandas.
 3.  **Heuristic & ML Detection:** Multi-layered detection stack using deterministic rules, statistical baselining, and ensemble ML.
@@ -15,21 +15,21 @@ AI-Sentinel processing pipeline follows a tiered approach:
 
 ## 2. Core Architecture Components
 
-The application is structured into a Python backend (`ai_sentinel/`) and a TypeScript frontend (`frontend/`).
+The application is structured into a Python backend (`lsadra/`) and a TypeScript frontend (`frontend/`).
 
-### 2.1 Ingestion Layer (`ai_sentinel/ingestion/`)
+### 2.1 Ingestion Layer (`lsadra/ingestion/`)
 *   `api_ingestion.py`: FastAPI endpoints for ingestion and health stats.
 *   `ingestion_manager.py`: Orchestrates multi-source parsers (Syslog, Windows, Network, Endpoint).
 
-### 2.2 Feature Extraction (`ai_sentinel/features/`)
+### 2.2 Feature Extraction (`lsadra/features/`)
 *   `feature_extractor.py`: Transforms normalized events into temporal and behavioral feature vectors.
 
-### 2.3 Detection & Analysis (`ai_sentinel/detection/`)
+### 2.3 Detection & Analysis (`lsadra/detection/`)
 *   `detection_orchestrator.py`: Manages the ML model lifecycle and coordinates the detection pipeline.
 *   `rule_engine.py`: Deterministic threat correlation (Brute Force, Lateral Movement, etc.).
 *   `incident_manager.py`: Aggregates anomalies into Security Incidents to reduce alert fatigue.
 
-### 2.4 Storage & Database (`ai_sentinel/storage/`)
+### 2.4 Storage & Database (`lsadra/storage/`)
 *   `database.py`: Handles persistence using a thread-safe SQLite interface.
 *   `migrations/`: Sequential SQL scripts for schema evolution (V4 includes `alerts_feedback` and `ingestion_stats`).
 

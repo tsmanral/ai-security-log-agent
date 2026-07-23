@@ -1,8 +1,8 @@
 <div align="center">
 
-# 🛡️ LSAD
+# 🛡️ LSADRA
 
-### Local Security & Anomaly Detection — open-source, explainable, built to run anywhere.
+### Local Security Anomaly Detection & Risk Assessment — open-source, explainable, built to run anywhere.
 
 **Real-time, multi-source log detection with ML ensembles, SHAP explainability, and human-readable threat narratives — no LLM API keys required.**
 
@@ -13,15 +13,15 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-API-009688.svg?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-Dashboard-61DAFB.svg?style=flat-square&logo=react&logoColor=black)](frontend/)
 [![Tests](https://img.shields.io/badge/smoke_tests-27%2F27_passing-brightgreen.svg?style=flat-square)](tests/test_v4_smoke.py)
-[![GitHub Stars](https://img.shields.io/github/stars/tsmanral/LSAD?style=flat-square)](https://github.com/tsmanral/LSAD/stargazers)
+[![GitHub Stars](https://img.shields.io/github/stars/tsmanral/lsadra?style=flat-square)](https://github.com/tsmanral/lsadra/stargazers)
 
 </div>
 
 ---
 
-## Why LSAD?
+## Why LSADRA?
 
-Enterprise SIEMs like Splunk and Microsoft Sentinel are powerful — and heavy, expensive, and opaque. Lightweight consumer tools watch the network but have no real detection intelligence. **LSAD fills the gap**: a self-hostable SOC platform that explains *why* every alert fired.
+Enterprise SIEMs like Splunk and Microsoft Sentinel are powerful — and heavy, expensive, and opaque. Lightweight consumer tools watch the network but have no real detection intelligence. **LSADRA fills the gap**: a self-hostable SOC platform that explains *why* every alert fired.
 
 - 🧠 **Multi-layer ML detection** — statistical baselining (Z-score), ensemble models (Isolation Forest, LOF, One-Class SVM), and a PyTorch autoencoder, with drift tracking via Population Stability Index.
 - 🔍 **Explainable by design** — SHAP feature attribution, composite severity scoring with a plain-English breakdown per alert, and MITRE ATT&CK technique mapping with confidence scores.
@@ -36,8 +36,8 @@ Enterprise SIEMs like Splunk and Microsoft Sentinel are powerful — and heavy, 
 
 ```bash
 # 1. Clone and set up
-git clone https://github.com/tsmanral/LSAD.git
-cd LSAD
+git clone https://github.com/tsmanral/lsadra.git
+cd lsadra
 py -3.12 -m venv venv            # Linux/macOS: python3.12 -m venv venv
 venv/Scripts/pip install -r requirements.txt   # Linux/macOS: venv/bin/pip
 
@@ -65,7 +65,7 @@ cp .env.example .env    # set JWT secrets, TLS flags, optional AbuseIPDB key
 docker compose up -d
 ```
 
-This starts the API (`:8000`), the legacy Streamlit dashboard (`:8501`), and an idle agent simulator. A versioned Docker image is also published to [GHCR](https://github.com/tsmanral/LSAD/pkgs/container/lsad) on every release.
+This starts the API (`:8000`), the legacy Streamlit dashboard (`:8501`), and an idle agent simulator. A versioned Docker image is also published to [GHCR](https://github.com/tsmanral/lsadra/pkgs/container/lsadra) on every release.
 
 ## Ingesting Logs
 
@@ -105,7 +105,7 @@ Background jobs (APScheduler) handle cross-source correlation, lateral-movement 
 ## Project Structure
 
 ```
-ai_sentinel/        Core platform: auth, ingestion, detection, storage, scheduler, legacy UI
+lsadra/        Core platform: auth, ingestion, detection, storage, scheduler, legacy UI
 frontend/           React (Vite + TypeScript) SOC dashboard
 tests/              Test suite + end-to-end smoke tests
 datasets/           Synthetic SSH log generator for local experimentation
@@ -123,7 +123,7 @@ Contributions are welcome! Read the [Contributing Guide](CONTRIBUTING.md) for th
 2. Make your change and run the smoke tests (`python tests/test_v4_smoke.py`).
 3. Open a **pull request** against `main` with a clear description.
 
-`main` is the only long-lived branch — all work lands through short-lived feature branches and PRs. Bug reports and feature ideas are welcome in [Issues](https://github.com/tsmanral/LSAD/issues).
+`main` is the only long-lived branch — all work lands through short-lived feature branches and PRs. Bug reports and feature ideas are welcome in [Issues](https://github.com/tsmanral/lsadra/issues).
 
 This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). To report a vulnerability privately, see the [Security Policy](SECURITY.md) — never open a public issue for security findings.
 
@@ -140,14 +140,14 @@ Distributed under the **GNU Affero General Public License v3.0**. See [LICENSE](
 
 ## Contributors
 
-Thanks to everyone who has contributed to LSAD:
+Thanks to everyone who has contributed to LSADRA:
 
-<a href="https://github.com/tsmanral/LSAD/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=tsmanral/LSAD" alt="Contributors" />
+<a href="https://github.com/tsmanral/lsadra/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=tsmanral/lsadra" alt="Contributors" />
 </a>
 
 ---
 
 <div align="center">
-⭐ If LSAD is useful to you, consider starring the repo — it helps the project reach more people.
+⭐ If LSADRA is useful to you, consider starring the repo — it helps the project reach more people.
 </div>

@@ -50,7 +50,7 @@ const DashboardLayout = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `AI-Sentinel-Report-${new Date().toISOString().split('T')[0]}${isTxt?'.txt':'.pdf'}`);
+      link.setAttribute('download', `LSADRA-Report-${new Date().toISOString().split('T')[0]}${isTxt?'.txt':'.pdf'}`);
       document.body.appendChild(link);
       link.click();
       window.alert(`SOC Report generated (${isTxt?'Simulation TEXT':'Production PDF'}).`);
@@ -67,7 +67,7 @@ const DashboardLayout = () => {
         {/* Brand */}
         <div className="p-5 border-b border-[rgba(0,240,255,0.15)]">
           <h1 className="text-xl font-bold tracking-widest text-[var(--color-primary)] font-display uppercase">
-            AI-Sentinel
+            LSADRA
           </h1>
           <p className="text-[10px] text-[var(--color-muted)] mt-0.5 font-mono uppercase">V4 · SOC Platform</p>
         </div>

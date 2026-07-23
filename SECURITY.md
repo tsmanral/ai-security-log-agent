@@ -1,6 +1,6 @@
 # Security Policy
 
-LSAD is a security tool, and we hold it to the standard we'd expect of one. Thank you for helping keep the project and its users safe.
+LSADRA is a security tool, and we hold it to the standard we'd expect of one. Thank you for helping keep the project and its users safe.
 
 ## Supported Versions
 
@@ -16,7 +16,7 @@ LSAD is a security tool, and we hold it to the standard we'd expect of one. Than
 Instead, use one of these private channels:
 
 1. **GitHub private vulnerability reporting** (preferred): go to the repository's **Security** tab → **Report a vulnerability**. This opens a private advisory visible only to maintainers.
-2. **Email**: [tribhuwan.singh1108@gmail.com](mailto:tribhuwan.singh1108@gmail.com) with the subject line `[LSAD SECURITY]`.
+2. **Email**: [tribhuwan.singh1108@gmail.com](mailto:tribhuwan.singh1108@gmail.com) with the subject line `[LSADRA SECURITY]`.
 
 Please include:
 
@@ -46,7 +46,7 @@ Out of scope:
 
 - Vulnerabilities requiring physical access to an already-compromised host
 - Denial of service via volumetric traffic
-- Findings in third-party dependencies with no demonstrated impact on LSAD (report those upstream, but feel free to notify us too)
+- Findings in third-party dependencies with no demonstrated impact on LSADRA (report those upstream, but feel free to notify us too)
 
 ## Hardening Guidance for Deployments
 

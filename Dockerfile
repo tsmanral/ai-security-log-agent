@@ -1,4 +1,4 @@
-# AI-Sentinel V3 — Multi-stage Docker build
+# LSADRA V3 — Multi-stage Docker build
 FROM python:3.12-slim AS base
 
 # Set environment

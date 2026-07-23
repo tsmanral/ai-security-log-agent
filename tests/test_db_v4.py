@@ -11,13 +11,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
 tmp.close()
 
-import ai_sentinel.config as cfg_mod
+import lsadra.config as cfg_mod
 import pathlib
 cfg_mod.DB_PATH = pathlib.Path(tmp.name)
 
 # Apply V4 schema
 conn = sqlite3.connect(tmp.name)
-conn.executescript(open(r"ai_sentinel\storage\migrations\002_v4_schema.sql").read())
+conn.executescript(open(r"lsadra\storage\migrations\002_v4_schema.sql").read())
 # Also create the normalized_events and anomalies tables so foreign keys work
 conn.executescript("""
 CREATE TABLE IF NOT EXISTS normalized_events (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT, device_id TEXT, user_id TEXT, host TEXT, effective_username TEXT, source_ip TEXT, event_type TEXT, raw_message TEXT, attributes TEXT, is_synthetic INTEGER);
@@ -32,7 +32,7 @@ print(f"Temp DB: {tmp.name}")
 print("Schema applied.")
 
 # ── now import the functions ──────────────────────────────────
-from ai_sentinel.storage.database import (
+from lsadra.storage.database import (
     store_feedback,
     get_false_positive_patterns,
     get_fp_rate_by_source_type,

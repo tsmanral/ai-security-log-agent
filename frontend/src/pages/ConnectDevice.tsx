@@ -47,7 +47,7 @@ const ConnectDevice = () => {
           <div>
             <h3 className="text-xl font-display text-white mb-2">Secure Registration</h3>
             <p className="text-[var(--color-muted)] font-mono text-sm mb-6 max-w-3xl">
-              Add a new device to your AI-Sentinel workspace. Generate a one-time registration token below, then run the installer on your target machine. The agent will automatically configure TLS and begin streaming logs to the ingestion pipeline.
+              Add a new device to your LSADRA workspace. Generate a one-time registration token below, then run the installer on your target machine. The agent will automatically configure TLS and begin streaming logs to the ingestion pipeline.
             </p>
             
             <button 

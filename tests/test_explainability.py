@@ -1,5 +1,5 @@
 """
-AI-Sentinel V3 — Explainability tests.
+LSADRA V3 — Explainability tests.
 
 Tests for SHAP aggregation, narrative builder, and threat intelligence.
 """
@@ -19,13 +19,13 @@ class TestShapAggregator:
     """Tests for the SHAP aggregator."""
 
     def test_aggregate_empty(self):
-        from ai_sentinel.explainability.shap_aggregator import ShapAggregator
+        from lsadra.explainability.shap_aggregator import ShapAggregator
 
         result = ShapAggregator.aggregate([])
         assert result == {}
 
     def test_aggregate_single_model(self):
-        from ai_sentinel.explainability.shap_aggregator import ShapAggregator
+        from lsadra.explainability.shap_aggregator import ShapAggregator
 
         shap_dicts = [{"failures_15m": 0.5, "hour_sin": 0.2}]
         result = ShapAggregator.aggregate(shap_dicts)
@@ -33,7 +33,7 @@ class TestShapAggregator:
         assert result["hour_sin"] == pytest.approx(0.2, abs=0.01)
 
     def test_aggregate_weighted(self):
-        from ai_sentinel.explainability.shap_aggregator import ShapAggregator
+        from lsadra.explainability.shap_aggregator import ShapAggregator
 
         shap_dicts = [
             {"failures_15m": 0.3},
@@ -46,7 +46,7 @@ class TestShapAggregator:
         assert result["failures_15m"] == pytest.approx(0.75, abs=0.01)
 
     def test_dominant_group(self):
-        from ai_sentinel.explainability.shap_aggregator import ShapAggregator
+        from lsadra.explainability.shap_aggregator import ShapAggregator
 
         shap_dict = {
             "failures_15m": 0.8,
@@ -57,7 +57,7 @@ class TestShapAggregator:
         assert group == "Behavioral"
 
     def test_group_breakdown(self):
-        from ai_sentinel.explainability.shap_aggregator import ShapAggregator
+        from lsadra.explainability.shap_aggregator import ShapAggregator
 
         shap_dict = {
             "failures_15m": 0.5,
@@ -70,7 +70,7 @@ class TestShapAggregator:
         assert breakdown["Temporal"] == pytest.approx(0.5, abs=0.01)
 
     def test_mitre_confidence(self):
-        from ai_sentinel.explainability.shap_aggregator import ShapAggregator
+        from lsadra.explainability.shap_aggregator import ShapAggregator
 
         shap_dict = {
             "failures_15m": 0.8,
@@ -88,7 +88,7 @@ class TestNarrativeBuilder:
     """Tests for the narrative builder."""
 
     def test_basic_narrative(self):
-        from ai_sentinel.explainability.narrative_builder import NarrativeBuilder
+        from lsadra.explainability.narrative_builder import NarrativeBuilder
 
         narrative = NarrativeBuilder.build(
             threat_type="Brute Force Attack",
@@ -103,7 +103,7 @@ class TestNarrativeBuilder:
         assert "1.2.3.4" in narrative
 
     def test_narrative_with_severity(self):
-        from ai_sentinel.explainability.narrative_builder import NarrativeBuilder
+        from lsadra.explainability.narrative_builder import NarrativeBuilder
 
         sev_ctx = {
             "severity_score": 0.85,
@@ -120,7 +120,7 @@ class TestNarrativeBuilder:
         assert "0.85" in narrative
 
     def test_narrative_with_features(self):
-        from ai_sentinel.explainability.narrative_builder import NarrativeBuilder
+        from lsadra.explainability.narrative_builder import NarrativeBuilder
 
         narrative = NarrativeBuilder.build(
             threat_type="Brute Force Attack",
@@ -147,14 +147,14 @@ class TestThreatIntel:
         assert data["totalReports"] == 42
 
     def test_get_ip_reputation_not_cached(self):
-        from ai_sentinel.explainability.threat_intel import get_ip_reputation
+        from lsadra.explainability.threat_intel import get_ip_reputation
 
         result = get_ip_reputation("203.0.113.50")
         assert result["ip"] == "203.0.113.50"
         assert result.get("status") == "not_queried"
 
     def test_threat_intel_cache(self):
-        from ai_sentinel.storage.database import upsert_threat_intel, get_threat_intel
+        from lsadra.storage.database import upsert_threat_intel, get_threat_intel
 
         upsert_threat_intel(
             ip_address="10.0.0.1",

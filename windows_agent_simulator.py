@@ -1,5 +1,5 @@
 """
-AI-Sentinel V3 — Windows Agent + Server Simulator.
+LSADRA V3 — Windows Agent + Server Simulator.
 
 This script makes it easy to test the V3 pipeline locally on Windows.
 1. Starts the FastAPI server (`server.py`) in the background.
@@ -20,7 +20,7 @@ import sys
 SERVER_URL = "http://127.0.0.1:8000"
 
 print("=" * 70)
-print("🛡️  AI-Sentinel V3 — Windows Agent Simulator")
+print("🛡️  LSADRA V3 — Windows Agent Simulator")
 print("=" * 70)
 
 print("\n1. Starting FastAPI Server in the background...")
@@ -48,8 +48,8 @@ except Exception as e:
 
 print("\n2. Looking up a user to generate a registration token...")
 try:
-    from ai_sentinel.storage.database import init_db, get_connection
-    from ai_sentinel.onboarding.token_manager import generate_token
+    from lsadra.storage.database import init_db, get_connection
+    from lsadra.onboarding.token_manager import generate_token
     init_db()
 
     conn = get_connection()
@@ -60,8 +60,8 @@ try:
 
     if not row:
         print("   ⚠️  No users found. Creating a default admin user...")
-        from ai_sentinel.auth import hash_password
-        from ai_sentinel.storage.database import create_user
+        from lsadra.auth import hash_password
+        from lsadra.storage.database import create_user
         import uuid
         admin_id = str(uuid.uuid4())
         create_user(admin_id, "admin", hash_password("admin"), "ADMIN")
@@ -143,14 +143,14 @@ print("👉 INSTRUCTIONS:")
 print("👉 Open 'dummy_auth.log' in Notepad.")
 print("👉 Paste new SSH log lines into the file and save to trigger anomalies!")
 print("👉 Heartbeats are being sent every 30 seconds.")
-print(f"👉 Dashboard: streamlit run ai_sentinel/ui/dashboard.py")
+print(f"👉 Dashboard: streamlit run lsadra/ui/dashboard.py")
 print(f"👉 API docs:  {SERVER_URL}/docs")
 print("=" * 70)
 
 try:
     subprocess.run([
         sys.executable,
-        "-m", "ai_sentinel.endpoint_agent.linux_agent",
+        "-m", "lsadra.endpoint_agent.linux_agent",
         "--config", "agent_config.yml"
     ])
 except KeyboardInterrupt:

@@ -68,7 +68,7 @@ dummy_auth.log
 
 # Agent local config
 agent_config.yml
-/etc/ai-sentinel-agent/
+/etc/lsadra-agent/
 
 # Windows Simulator artifacts
 test_agent_windows.py
