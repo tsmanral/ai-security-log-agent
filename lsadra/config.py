@@ -5,9 +5,12 @@ All tuneable parameters, file paths, secrets, and resource limits are defined he
 Environment variables override defaults where noted.
 """
 
+import logging
 import os
 import secrets
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -17,6 +20,13 @@ DATA_DIR = PROJECT_ROOT / "data"
 DB_PATH = DATA_DIR / "sentinel_v3.db"
 LOG_DIR = PROJECT_ROOT / "logs"
 MODEL_DIR = DATA_DIR / "models"
+
+# ---------------------------------------------------------------------------
+# Runtime mode
+# ---------------------------------------------------------------------------
+# Dev mode relaxes production boot guards (per-boot JWT secret, optional TLS)
+# for LOCAL DEVELOPMENT ONLY. Never set true in production. (§6 #4/#6)
+DEV_MODE: bool = os.getenv("SENTINEL_DEV_MODE", "false").lower() == "true"
 
 # ---------------------------------------------------------------------------
 # Networking
@@ -48,9 +58,26 @@ TLS_KEY_PATH: str = os.getenv("SENTINEL_TLS_KEY", "")
 # ---------------------------------------------------------------------------
 # Security — JWT / RBAC
 # ---------------------------------------------------------------------------
-# Secret key used to sign JWTs / session tokens (generate once, store in env)
-JWT_SECRET: str = os.getenv("SENTINEL_JWT_SECRET", secrets.token_urlsafe(32))
-SECRET_KEY: str = os.getenv("SENTINEL_SECRET_KEY", JWT_SECRET)  # backward compat
+# Secret used to sign JWTs. Outside dev mode a stable secret is MANDATORY — a
+# per-boot random secret silently invalidates every issued token on restart, so
+# the server refuses to start without SENTINEL_JWT_SECRET. The old silent
+# SECRET_KEY -> JWT_SECRET fallback is removed. (§6 #4)
+_jwt_secret_env = os.getenv("SENTINEL_JWT_SECRET")
+if _jwt_secret_env:
+    JWT_SECRET: str = _jwt_secret_env
+elif DEV_MODE:
+    JWT_SECRET = secrets.token_urlsafe(32)
+    logger.warning(
+        "SENTINEL_DEV_MODE: no SENTINEL_JWT_SECRET set — using a random per-boot "
+        "secret; all issued tokens invalidate on restart. Set SENTINEL_JWT_SECRET "
+        "for stable sessions."
+    )
+else:
+    raise RuntimeError(
+        "SENTINEL_JWT_SECRET is required outside dev mode. Refusing to start with "
+        "an insecure per-boot secret. Set SENTINEL_JWT_SECRET, or set "
+        "SENTINEL_DEV_MODE=true for local development."
+    )
 TOKEN_ALGORITHM: str = "HS256"
 JWT_EXPIRATION_MINUTES: int = int(os.getenv("SENTINEL_JWT_EXPIRATION_MINUTES", "480"))
 REGISTRATION_TOKEN_LIFETIME_MINUTES: int = 15  # single-use, short-lived
