@@ -93,3 +93,8 @@ htmlcov/
 
 # PDF reports
 *.pdf
+
+# Private operator tooling (never commit)
+.claude/
+vault/
+LAUNCH_PACKAGE.md
