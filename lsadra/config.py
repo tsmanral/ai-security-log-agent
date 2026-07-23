@@ -45,7 +45,10 @@ CORS_ALLOWED_ORIGINS: list = [
 # ---------------------------------------------------------------------------
 # Security — TLS
 # ---------------------------------------------------------------------------
-REQUIRE_TLS: bool = os.getenv("SENTINEL_REQUIRE_TLS", "false").lower() == "true"
+# TLS required by default OUTSIDE dev mode — agents ship API keys over the wire,
+# so plaintext HTTP must be an explicit dev-only opt-out. (§6 #6)
+_require_tls_default = "false" if DEV_MODE else "true"
+REQUIRE_TLS: bool = os.getenv("SENTINEL_REQUIRE_TLS", _require_tls_default).lower() == "true"
 
 # Reverse-proxy IPs whose X-Forwarded-Proto header may be trusted for TLS
 # enforcement (comma-separated). Empty (default) = header is never trusted.
