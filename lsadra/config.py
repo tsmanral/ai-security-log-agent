@@ -29,6 +29,12 @@ DASHBOARD_PORT: int = int(os.getenv("SENTINEL_DASH_PORT", "8501"))
 # Security — TLS
 # ---------------------------------------------------------------------------
 REQUIRE_TLS: bool = os.getenv("SENTINEL_REQUIRE_TLS", "false").lower() == "true"
+
+# Reverse-proxy IPs whose X-Forwarded-Proto header may be trusted for TLS
+# enforcement (comma-separated). Empty (default) = header is never trusted.
+TRUSTED_PROXY_IPS: frozenset = frozenset(
+    ip.strip() for ip in os.getenv("SENTINEL_TRUSTED_PROXY_IPS", "").split(",") if ip.strip()
+)
 TLS_CERT_PATH: str = os.getenv("SENTINEL_TLS_CERT", "")
 TLS_KEY_PATH: str = os.getenv("SENTINEL_TLS_KEY", "")
 

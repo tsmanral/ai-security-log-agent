@@ -8,6 +8,7 @@ FastAPI router that accepts:
 [V4 ENHANCEMENT — gap: multi-source ingestion]
 """
 
+import hmac
 import logging
 import time
 from collections import defaultdict, deque
@@ -15,6 +16,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from passlib.hash import bcrypt
 from pydantic import BaseModel, Field, constr
 
 from lsadra.config import (
@@ -80,21 +82,24 @@ def _authenticate_device(x_device_id: str = Header(...), x_api_key: str = Header
     Validate the device ID + API key sent in request headers.
 
     Returns the device row dict on success, raises 401 otherwise.
-    The API key comparison uses the hashed value stored at registration time.
-    For the skeleton we do a plain equality check; production code should
-    use ``passlib.hash.bcrypt.verify(x_api_key, device['api_key_hash'])``.
+    Keys registered since hashing landed are bcrypt-verified; rows created
+    before that stored the raw key and are compared in constant time.
     """
     device = get_device(x_device_id)
     if device is None:
         raise HTTPException(status_code=401, detail="Unknown device.")
 
-    # TODO: replace with proper KDF verify once passlib is wired in
-    # from passlib.hash import bcrypt
-    # if not bcrypt.verify(x_api_key, device["api_key_hash"]):
-    stored_hash = device.get("api_key_hash", "")
-    if stored_hash != x_api_key and stored_hash != "":
-        # Skeleton: accept in dev mode; tighten for production
-        logger.warning("API key mismatch for device %s (dev-mode pass-through)", x_device_id)
+    stored_hash = device.get("api_key_hash") or ""
+    if not stored_hash:
+        raise HTTPException(status_code=401, detail="Device has no credential set.")
+
+    if stored_hash.startswith("$2"):
+        ok = bcrypt.verify(x_api_key, stored_hash)
+    else:
+        ok = hmac.compare_digest(stored_hash, x_api_key)
+    if not ok:
+        logger.warning("API key mismatch for device %s — rejected", x_device_id)
+        raise HTTPException(status_code=401, detail="Invalid API key.")
 
     return device
 

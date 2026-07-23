@@ -12,7 +12,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-from lsadra.config import REQUIRE_TLS
+from lsadra.config import REQUIRE_TLS, TRUSTED_PROXY_IPS
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +31,13 @@ class TLSEnforcementMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if REQUIRE_TLS:
             scheme = request.url.scheme
-            forwarded_proto = request.headers.get("x-forwarded-proto", scheme)
+            # X-Forwarded-Proto is attacker-settable; only honor it when the
+            # direct peer is a configured trusted reverse proxy.
+            client_ip = request.client.host if request.client else None
+            if client_ip and client_ip in TRUSTED_PROXY_IPS:
+                scheme = request.headers.get("x-forwarded-proto", scheme)
 
-            if forwarded_proto != "https" and request.url.path not in _EXEMPT_PATHS:
+            if scheme != "https" and request.url.path not in _EXEMPT_PATHS:
                 logger.warning(
                     "Blocked non-TLS request to %s from %s",
                     request.url.path,

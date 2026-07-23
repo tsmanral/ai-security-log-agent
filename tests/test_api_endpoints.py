@@ -32,8 +32,8 @@ class TestHealthEndpoints:
         response = client.get("/")
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "ok"
-        assert data["version"] == "3.0.0"
+        assert data["status"] == "online"
+        assert data["service"] == "LSADRA V3 Core"
 
     def test_api_health(self, client):
         response = client.get("/api/health")
@@ -98,7 +98,7 @@ class TestIncidentEndpoints:
     """Tests for incident management endpoints."""
 
     def test_incident_status_no_auth(self, client):
-        response = client.post("/incidents/1/status", json={
+        response = client.post("/api/incidents/1/status", json={
             "status": "RESOLVED",
         })
         assert response.status_code == 401
