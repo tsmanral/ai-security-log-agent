@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - name: Ruff lint
+        run: ruff check .
+      - name: Ruff format check
+        run: ruff format --check .
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      # Boot in dev mode so the §6 config guards (JWT secret / TLS) don't trip CI.
+      SENTINEL_DEV_MODE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        # NOTE (first-run validation): requirements.txt pins torch via the CPU
+        # wheel index. If the plain install fails, the extra-index fallback runs.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt \
+            || pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
+          pip install pytest
+      - name: Smoke gate
+        run: python tests/test_v4_smoke.py
+      - name: Security regression gate
+        shell: bash
+        run: |
+          if [ -d tests/security ]; then
+            python -m pytest tests/security/ -q
+          else
+            echo "tests/security/ not present on this ref — lands with the §6 remediation PR."
+          fi
