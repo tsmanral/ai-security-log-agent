@@ -1,3 +1,37 @@
+# Environment files (all variants)
+.env.*
+
+# Databases (anywhere in the tree)
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.db-shm
+*.db-wal
+intel_runtime.db
+
+# Model weights & caches
+*.gguf
+*.onnx
+*.pt
+*.bin
+*.mmdb
+
+# Cryptographic material
+*.pem
+*.key
+certs/
+
+# Build artifacts
+dist/
+
+# Local documentation workspace (Obsidian is personal/local only)
+.obsidian/
+
+# Runtime logs (entire directory)
+logs/
+
 # Python caches
 __pycache__/
 *.py[cod]
