@@ -19,7 +19,7 @@ from lsadra.auth import (
     require_role,
     verify_password,
 )
-from lsadra.config import REQUIRE_TLS
+from lsadra.config import CORS_ALLOWED_ORIGINS, REQUIRE_TLS
 from lsadra.ingestion.api_ingestion import router as events_router
 from lsadra.onboarding.device_registration import router as devices_router
 from lsadra.storage.database import (
@@ -63,8 +63,8 @@ if REQUIRE_TLS:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=CORS_ALLOWED_ORIGINS,  # §6 #3: env allowlist, empty by default
+    allow_credentials=False,             # agents use header tokens, not cookies
     allow_methods=["*"],
     allow_headers=["*"],
 )

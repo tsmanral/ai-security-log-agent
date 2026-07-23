@@ -25,6 +25,13 @@ API_HOST: str = os.getenv("SENTINEL_API_HOST", "0.0.0.0")
 API_PORT: int = int(os.getenv("SENTINEL_API_PORT", "8000"))
 DASHBOARD_PORT: int = int(os.getenv("SENTINEL_DASH_PORT", "8501"))
 
+# CORS: explicit browser-origin allowlist for the SPA (comma-separated).
+# Empty (default) = no cross-origin access. Agents authenticate with header
+# tokens, not browser credentials, so credentialed CORS is never enabled.
+CORS_ALLOWED_ORIGINS: list = [
+    o.strip() for o in os.getenv("SENTINEL_CORS_ORIGINS", "").split(",") if o.strip()
+]
+
 # ---------------------------------------------------------------------------
 # Security — TLS
 # ---------------------------------------------------------------------------
