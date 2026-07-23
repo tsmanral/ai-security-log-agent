@@ -140,9 +140,10 @@ async def api_toggle_device_status(device_id: str, active: bool, user: dict = De
 
 @router.get("/export")
 async def api_export(user: dict = Depends(require_role("ADMIN", "ANALYST", "VIEWER"))):
-    kpis = get_dashboard_kpis()
-    incidents = get_dashboard_open_incidents()
-    anomalies = get_dashboard_recent_anomalies(limit=50)
+    uid = user["user_id"] if user["role"] != "ADMIN" else None
+    kpis = get_dashboard_kpis(user_id=uid)
+    incidents = get_dashboard_open_incidents(user_id=uid)
+    anomalies = get_dashboard_recent_anomalies(limit=50, user_id=uid)
 
     pdf_bytes = generate_report(
         title="AI-Sentinel Security Report",

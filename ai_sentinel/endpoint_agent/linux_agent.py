@@ -23,7 +23,7 @@ logger = logging.getLogger("ai-sentinel-agent")
 DEFAULT_CONFIG = {
     "server_url": "http://localhost:8000",
     "collector_endpoint": "/api/events/batch",
-    "api_key": "DEV_KEY_UNSECURE",
+    "api_key": "",
     "device_id": platform.node(),
     "batch_size": 50,
     "flush_interval_seconds": 3,

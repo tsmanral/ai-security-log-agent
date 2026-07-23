@@ -501,13 +501,16 @@ const setMockRole = (username: string, role: string) => {
   localStorage.setItem(MOCK_CREDS_KEY, JSON.stringify(store));
 };
 
-// Default mock credentials pre-seeded (overridden by localStorage)
-const SEED_CREDS: Record<string, { password: string; role: string }> = {
-  admin: { password: 'admin', role: 'ADMIN' },
-  testuser: { password: 'testuser', role: 'ANALYST' },
-  jsmith: { password: 'jsmith', role: 'ANALYST' },
-  jdoe: { password: 'jdoe', role: 'VIEWER' },
-};
+// Default mock credentials, dev builds only — production builds seed nothing
+// and never authenticate client-side.
+const SEED_CREDS: Record<string, { password: string; role: string }> = import.meta.env.DEV
+  ? {
+      admin: { password: 'admin', role: 'ADMIN' },
+      testuser: { password: 'testuser', role: 'ANALYST' },
+      jsmith: { password: 'jsmith', role: 'ANALYST' },
+      jdoe: { password: 'jdoe', role: 'VIEWER' },
+    }
+  : {};
 
 const resolveCred = (username: string) => {
   const store = getMockCreds();
