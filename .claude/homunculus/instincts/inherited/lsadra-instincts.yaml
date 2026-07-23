@@ -1,0 +1,496 @@
+# Instincts generated from https://github.com/tsmanral/lsadra
+# Generated: 2026-07-23T20:52:12.210Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: lsadra-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/tsmanral/lsadra
+---
+
+# Lsadra Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: fix, test
+
+## Evidence
+
+- 7 commits analyzed
+- Detected conventional commit pattern
+- Examples: test(security): add §6 regression suite for #1/#10/#11/#12/#14, fix(security): §6 #15 — drop passlib for direct bcrypt in device API-key hashing
+
+---
+id: lsadra-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/tsmanral/lsadra
+---
+
+# Lsadra Commit Length
+
+## Action
+
+Write moderate-length commit messages (~73 characters)
+
+## Evidence
+
+- Average commit message length: 73 chars
+- Based on 7 commits
+
+---
+id: lsadra-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/tsmanral/lsadra
+---
+
+# Lsadra Naming Files
+
+## Action
+
+Use snake_case naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: snake_case
+
+---
+id: lsadra-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/tsmanral/lsadra
+---
+
+# Lsadra Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: lsadra-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/tsmanral/lsadra
+---
+
+# Lsadra Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: lsadra-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/tsmanral/lsadra
+---
+
+# Lsadra Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: lsadra-test-naming
+trigger: "when creating a test file"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/tsmanral/lsadra
+---
+
+# Lsadra Test Naming
+
+## Action
+
+Name test files using the pattern: *.test.ts
+
+## Evidence
+
+- File pattern: *.test.ts
+- Consistent across test files
+
+---
+id: lsadra-workflow-security-fix-with-regression-test
+trigger: "when doing security fix with regression test"
+confidence: 0.7
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/tsmanral/lsadra
+---
+
+# Lsadra Workflow Security Fix With Regression Test
+
+## Action
+
+Follow the security-fix-with-regression-test workflow:
+1. Edit one or more implementation files to apply the security fix (e.g., config.py, api_ingestion.py, device_registration.py, ratelimit.py).
+2. Edit or add a dedicated regression test file under tests/security/ (typically test_s6_XX_*.py) to cover the specific issue.
+3. Optionally update .env.example and/or requirements.txt if configuration or dependencies change.
+4. Run and verify the regression suite (pytest tests/security/).
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~4x per month
+- Files: lsadra/config.py, lsadra/ingestion/api_ingestion.py, lsadra/onboarding/device_registration.py
+
+---
+id: lsadra-workflow-add-or-update-config-with-env-doc
+trigger: "when doing add or update config with env doc"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/tsmanral/lsadra
+---
+
+# Lsadra Workflow Add Or Update Config With Env Doc
+
+## Action
+
+Follow the add-or-update-config-with-env-doc workflow:
+1. Edit lsadra/config.py to add or update the config variable.
+2. Edit .env.example to document the new or changed environment variable.
+3. Edit relevant code files to use the new config (e.g., server.py, api_ingestion.py).
+4. Add or update regression tests if needed.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: lsadra/config.py, .env.example, server.py
+
+---
+id: lsadra-workflow-rate-limiter-implementation-and-hardening
+trigger: "when doing rate limiter implementation and hardening"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/tsmanral/lsadra
+---
+
+# Lsadra Workflow Rate Limiter Implementation And Hardening
+
+## Action
+
+Follow the rate-limiter-implementation-and-hardening workflow:
+1. Create or edit lsadra/ratelimit.py to implement or update the rate limiter logic.
+2. Edit code that uses the rate limiter (e.g., api_ingestion.py, device_registration.py).
+3. Edit lsadra/config.py to add or update rate limit config variables.
+4. Add or update regression tests in tests/security/test_s6_05_ratelimit_lru.py.
+5. Verify that bypasses and DoS vectors are covered by tests.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: lsadra/ratelimit.py, lsadra/ingestion/api_ingestion.py, lsadra/onboarding/device_registration.py
+
+---
+id: lsadra-instinct-file-naming-snake-case
+trigger: "When creating or renaming a file in the codebase."
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct File Naming Snake Case
+
+## Action
+
+Use snake_case for file names.
+
+## Evidence
+
+- Pattern in namingConventions.files: snake_case
+
+---
+id: lsadra-instinct-function-naming-camelCase
+trigger: "When defining a new function."
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct Function Naming CamelCase
+
+## Action
+
+Name the function using camelCase.
+
+## Evidence
+
+- Pattern in namingConventions.functions: camelCase
+
+---
+id: lsadra-instinct-class-naming-pascal-case
+trigger: "When defining a new class."
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct Class Naming Pascal Case
+
+## Action
+
+Name the class using PascalCase.
+
+## Evidence
+
+- Pattern in namingConventions.classes: PascalCase
+
+---
+id: lsadra-instinct-constant-naming-screaming-snake-case
+trigger: "When defining a constant."
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct Constant Naming Screaming Snake Case
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE.
+
+## Evidence
+
+- Pattern in namingConventions.constants: SCREAMING_SNAKE_CASE
+
+---
+id: lsadra-instinct-import-relative
+trigger: "When importing modules within the project."
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct Import Relative
+
+## Action
+
+Use relative imports.
+
+## Evidence
+
+- Pattern in importStyle: relative
+
+---
+id: lsadra-instinct-export-named
+trigger: "When exporting functions, classes, or constants."
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct Export Named
+
+## Action
+
+Use named exports.
+
+## Evidence
+
+- Pattern in exportStyle: named
+
+---
+id: lsadra-instinct-test-location-separate
+trigger: "When adding or updating tests."
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct Test Location Separate
+
+## Action
+
+Place tests in the separate 'tests' folder.
+
+## Evidence
+
+- Pattern in architecture.folderStructure.testLocation: separate
+- Pattern in commonFolders: tests
+
+---
+id: lsadra-instinct-test-file-pattern
+trigger: "When naming a test file."
+confidence: 0.7
+domain: testing
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct Test File Pattern
+
+## Action
+
+Use the pattern *.test.ts for test files.
+
+## Evidence
+
+- Pattern in testing.filePattern: *.test.ts
+
+---
+id: lsadra-instinct-security-test-naming
+trigger: "When adding a regression test for a security fix."
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct Security Test Naming
+
+## Action
+
+Name the test file as tests/security/test_s6_XX_*.py.
+
+## Evidence
+
+- Pattern in workflow: security-fix-with-regression-test
+- Example: tests/security/test_s6_*.py
+
+---
+id: lsadra-instinct-git-conventional-commits
+trigger: "When writing a commit message."
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct Git Conventional Commits
+
+## Action
+
+Use the conventional commit format with prefixes like 'fix' or 'test'.
+
+## Evidence
+
+- Pattern in commits.type: conventional
+- Pattern in commits.prefixes: fix, test
+- Example: fix(security): §6 #15 — drop passlib for direct bcrypt in device API-key hashing
+
+---
+id: lsadra-instinct-git-commit-length
+trigger: "When writing a commit message."
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct Git Commit Length
+
+## Action
+
+Keep the commit message concise, around 73 characters on average.
+
+## Evidence
+
+- Pattern in commits.averageLength: 73
+
+---
+id: lsadra-instinct-security-fix-with-regression-test
+trigger: "When someone fixes a security vulnerability or hardens a security control."
+confidence: 0.98
+domain: workflow
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct Security Fix With Regression Test
+
+## Action
+
+Edit implementation files to apply the fix and add or update a dedicated regression test in tests/security/.
+
+## Evidence
+
+- Workflow: security-fix-with-regression-test
+- Example commits and files in workflow
+
+---
+id: lsadra-instinct-add-or-update-config-with-env-doc
+trigger: "When someone introduces or changes an environment variable or config setting."
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct Add Or Update Config With Env Doc
+
+## Action
+
+Edit lsadra/config.py and .env.example, and update relevant code and tests.
+
+## Evidence
+
+- Workflow: add-or-update-config-with-env-doc
+- Example commits and files in workflow
+
+---
+id: lsadra-instinct-rate-limiter-implementation-and-hardening
+trigger: "When someone adds a new rate limiter or fixes bypasses/DoS in existing rate limiting logic."
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: tsmanral/lsadra
+---
+
+# Lsadra Instinct Rate Limiter Implementation And Hardening
+
+## Action
+
+Edit lsadra/ratelimit.py and related files, and add or update regression tests in tests/security/test_s6_05_ratelimit_lru.py.
+
+## Evidence
+
+- Workflow: rate-limiter-implementation-and-hardening
+- Example commits and files in workflow
+
