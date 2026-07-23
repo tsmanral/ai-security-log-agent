@@ -131,11 +131,24 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 Distributed under the **GNU Affero General Public License v3.0**. See [LICENSE](LICENSE) for details.
 
+## Project Status
+
+[![Latest Release](https://img.shields.io/github/v/release/tsmanral/lsadra?style=flat-square&logo=github&label=Release)](https://github.com/tsmanral/lsadra/releases)
+[![Last Commit](https://img.shields.io/github/last-commit/tsmanral/lsadra?style=flat-square&logo=git&logoColor=white)](https://github.com/tsmanral/lsadra/commits/main)
+[![Commit Activity](https://img.shields.io/github/commit-activity/m/tsmanral/lsadra?style=flat-square&label=Commits)](https://github.com/tsmanral/lsadra/graphs/commit-activity)
+[![Open Issues](https://img.shields.io/github/issues/tsmanral/lsadra?style=flat-square)](https://github.com/tsmanral/lsadra/issues)
+[![Repo Size](https://img.shields.io/github/repo-size/tsmanral/lsadra?style=flat-square)](https://github.com/tsmanral/lsadra)
+[![Container Image](https://img.shields.io/badge/GHCR-lsadra-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/tsmanral/lsadra/pkgs/container/lsadra)
+
+Active development — the roadmap runs from hardened core (security remediation, async ingestion) through Rust collector agents, a Tauri desktop UI, local-LLM narratives, and a mobile companion. Follow [Releases](https://github.com/tsmanral/lsadra/releases) for progress.
+
 ## Author
 
 **Tribhuwan Singh**
 
 [![GitHub](https://img.shields.io/badge/GitHub-tsmanral-181717?style=flat-square&logo=github)](https://github.com/tsmanral)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-singhtribh-0A66C2?style=flat-square&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/singhtribh/)
+[![Portfolio](https://img.shields.io/badge/Portfolio-tsmanral.github.io-24292F?style=flat-square&logo=githubpages&logoColor=white)](https://tsmanral.github.io/)
 [![Email](https://img.shields.io/badge/Email-tribhuwan.singh1108%40gmail.com-EA4335?style=flat-square&logo=gmail&logoColor=white)](mailto:tribhuwan.singh1108@gmail.com)
 
 ## Contributors
@@ -143,7 +156,7 @@ Distributed under the **GNU Affero General Public License v3.0**. See [LICENSE](
 Thanks to everyone who has contributed to LSADRA:
 
 <a href="https://github.com/tsmanral/lsadra/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=tsmanral/lsadra" alt="Contributors" />
+  <img src="https://contrib.rocks/image?repo=tsmanral/lsadra&max=100" alt="Contributors" />
 </a>
 
 ---
