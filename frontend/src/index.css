@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #00F0FF;
+  --color-primary-container: #00dbe9;
+  --color-background: #050A14;
+  --color-surface: rgba(16, 25, 43, 0.55);
+  --color-surface-dim: #0e131e;
+  --color-surface-low: #161c26;
+  --color-surface-container: #1a202a;
+  --color-surface-high: #242a35;
+  --color-text: #E0F4FF;
+  --color-muted: #5C7C99;
+  --color-critical: #FF2A6D;
+  --color-warning: #FFD600;
+  --color-safe: #05FFA1;
+
+  --color-source-ssh: #4A9EFF;
+  --color-source-syslog: #10B981;
+  --color-source-windows: #F59E0B;
+  --color-source-network: #8B5CF6;
+  --color-source-endpoint: #EF4444;
+
+  --font-display: "Rajdhani", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-family: var(--font-mono);
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+}
+
+.hud-panel {
+  background-color: var(--color-surface-low);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.hud-button {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-weight: bold;
+  background: linear-gradient(45deg, var(--color-primary), var(--color-primary-container));
+  color: #002022;
+  clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+  padding: 0.5rem 1.5rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hud-button:hover {
+  filter: brightness(1.2);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+}
+
+.hud-chip-critical {
+  background-color: var(--color-critical);
+  color: #690005;
+  font-family: var(--font-display);
+  font-weight: bold;
+  padding: 2px 8px;
+  text-transform: uppercase;
+}
+.hud-chip-warning {
+  background-color: var(--color-warning);
+  color: #000;
+  font-family: var(--font-display);
+  font-weight: bold;
+  padding: 2px 8px;
+  text-transform: uppercase;
+}
+.hud-chip-safe {
+  background-color: var(--color-safe);
+  color: #003920;
+  font-family: var(--font-display);
+  font-weight: bold;
+  padding: 2px 8px;
+  text-transform: uppercase;
+}
+
+/* Fix dropdown visibility issues */
+select {
+  background-color: #0a1120 !important;
+  color: #fff !important;
+  border: 1px solid rgba(0, 240, 255, 0.3) !important;
+}
+
+select option {
+  background-color: #050A14 !important;
+  color: #fff !important;
+}
+
+input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}

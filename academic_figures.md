@@ -1,13 +1,13 @@
-# AI-Sentinel V3 – AI-Based SIEM Platform Diagrams
+# AI-Sentinel V4 – AI-Based SIEM Platform Diagrams
 
-This document contains a comprehensive set of professional, academic-style figures representing the system design and analytics of the AI-Sentinel V3 project. These figures utilize diverse diagrammatic forms including architectural block diagrams, physical schemas, neural networks, UI mockups, and data-driven charts. 
+This document contains a comprehensive set of professional, academic-style figures representing the system design and analytics of the AI-Sentinel V4 project. These figures utilize diverse diagrammatic forms including architectural block diagrams, physical schemas, neural networks, UI mockups, and data-driven charts. V4 introduces multi-source ingestion and a reactive React-based SOC interface.
 
 ---
 
 ## FIGURE 1 – SYSTEM ARCHITECTURE DIAGRAM
 
 Type: Layered Architecture Diagram (Block format)
-This diagram illustrates the hierarchical technical stack of AI-Sentinel V3 from ingestion to storage.
+This diagram illustrates the hierarchical technical stack of AI-Sentinel V4 from multi-source ingestion to storage.
 
 ```mermaid
 block-beta
@@ -183,7 +183,7 @@ pie title Model Percentages in Final Ensemble Score
 
 Type: SHAP Summary Plot (Python Matplotlib rendered)
 
-![FIGURE 6 - SHAP Feature Importance Visualization](docs/figures/fig6_shap.png)
+![FIGURE 6 - SHAP Feature Importance](docs/figures/fig6_shap_v4.png)
 
 ---
 
@@ -267,7 +267,7 @@ erDiagram
 Type: Circular Lifecycle Diagram (Python Matplotlib Circular render)
 Provides a visual cyclical cadence of continuous SOC improvements rather than a rigid linear flowchart.
 
-![FIGURE 10 - Incident Response Lifecycle](docs/figures/fig10_lifecycle.png)
+![FIGURE 10 - Incident Response Lifecycle](docs/figures/fig10_lifecycle_v4.png)
 
 ---
 
@@ -276,7 +276,7 @@ Provides a visual cyclical cadence of continuous SOC improvements rather than a 
 Type: Events Per Second (EPS) Scalability Bar Chart
 Illustrates the ingestion capacity when configuring different node strategies.
 
-![FIGURE 11 - Ingestion Scalability](docs/figures2/fig11_ingestion.png)
+![FIGURE 11 - Ingestion Scalability](docs/figures2/fig11_ingestion_v4.png)
 
 ---
 
@@ -294,7 +294,7 @@ Demonstrates the latency distribution optimization after configuring pre-compile
 Type: Time-Series Configured Metrics Chart
 Visualizes the dynamic thresholding bands over 30 days of standard metrics like login frequency.
 
-![FIGURE 13 - Baselining Configuration](docs/figures2/fig13_base.png)
+![FIGURE 13 - Behavioral Baselining](docs/figures2/fig13_base_v4.png)
 
 ---
 
@@ -303,7 +303,7 @@ Visualizes the dynamic thresholding bands over 30 days of standard metrics like 
 Type: Configuration Resource Radar Chart
 A radar chart specifying technical configuration targets separating the statistical models versus deep learning models.
 
-![FIGURE 14 - Detection Component Config](docs/figures2/fig14_engine.png)
+![FIGURE 14 - Technical System Architecture](docs/figures/fig14_engine_v4.png)
 
 ---
 

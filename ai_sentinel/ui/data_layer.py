@@ -67,9 +67,21 @@ def get_dashboard_incidents(status: Optional[str] = None, limit: int = 100) -> L
 
 
 @st.cache_data(ttl=15)
-def get_dashboard_open_incidents() -> List[Dict]:
+def get_dashboard_open_incidents(user_id: Optional[str] = None) -> List[Dict]:
     """Get currently open incidents."""
-    return get_open_incidents(limit=200)
+    if not user_id:
+        return get_open_incidents(limit=200)
+    
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT i.* FROM incidents i
+           JOIN devices d ON i.device_id = d.id
+           WHERE i.status IN ('OPEN', 'INVESTIGATING') AND d.user_id = ?
+           ORDER BY i.last_seen DESC LIMIT 200""",
+        (user_id,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 @st.cache_data(ttl=30)
@@ -79,9 +91,25 @@ def get_incident_anomalies(incident_id: int) -> List[Dict]:
 
 
 @st.cache_data(ttl=15)
-def get_dashboard_recent_anomalies(limit: int = 50) -> List[Dict]:
+def get_dashboard_recent_anomalies(limit: int = 50, user_id: Optional[str] = None, device_id: Optional[str] = None) -> List[Dict]:
     """Get recent anomalies across all devices."""
-    return get_recent_anomalies(limit=limit)
+    conn = get_connection()
+    query = "SELECT * FROM anomalies WHERE is_anomaly = 1"
+    params = []
+    
+    if user_id:
+        query += " AND user_id = ?"
+        params.append(user_id)
+    if device_id:
+        query += " AND device_id = ?"
+        params.append(device_id)
+        
+    query += " ORDER BY created_at DESC LIMIT ?"
+    params.append(limit)
+    
+    rows = conn.execute(query, tuple(params)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 @st.cache_data(ttl=30)
@@ -101,9 +129,11 @@ def get_shap_for_anomaly(anomaly_id: int) -> Dict[str, float]:
 
 
 @st.cache_data(ttl=60)
-def get_dashboard_devices() -> List[Dict]:
+def get_dashboard_devices(user_id: Optional[str] = None) -> List[Dict]:
     """Get all registered devices."""
-    return get_all_devices()
+    if not user_id:
+        return get_all_devices()
+    return get_devices_for_user(user_id)
 
 
 @st.cache_data(ttl=60)
@@ -119,51 +149,110 @@ def get_dashboard_drift(model_name: str, limit: int = 50) -> List[Dict]:
 
 
 @st.cache_data(ttl=30)
-def get_dashboard_kpis() -> Dict[str, Any]:
+def get_dashboard_kpis(user_id: Optional[str] = None, device_id: Optional[str] = None) -> Dict[str, Any]:
     """Compute high-level KPIs for the dashboard overview."""
     conn = get_connection()
     try:
         # Total events (last 24h)
         cutoff = (datetime.utcnow() - timedelta(hours=24)).isoformat()
-        event_row = conn.execute(
-            "SELECT COUNT(*) FROM normalized_events WHERE timestamp > ?", (cutoff,)
-        ).fetchone()
+        
+        event_query = "SELECT COUNT(*) FROM normalized_events WHERE timestamp > ?"
+        event_params = [cutoff]
+        if user_id:
+            event_query += " AND user_id = ?"
+            event_params.append(user_id)
+        if device_id:
+            event_query += " AND device_id = ?"
+            event_params.append(device_id)
+        
+        event_row = conn.execute(event_query, tuple(event_params)).fetchone()
         total_events_24h = event_row[0] if event_row else 0
 
         # Total anomalies (last 24h)
-        anomaly_row = conn.execute(
-            "SELECT COUNT(*) FROM anomalies WHERE created_at > ? AND is_anomaly = 1",
-            (cutoff,),
-        ).fetchone()
+        anomaly_query = "SELECT COUNT(*) FROM anomalies WHERE created_at > ? AND is_anomaly = 1"
+        anomaly_params = [cutoff]
+        if user_id:
+            anomaly_query += " AND user_id = ?"
+            anomaly_params.append(user_id)
+        if device_id:
+            anomaly_query += " AND device_id = ?"
+            anomaly_params.append(device_id)
+            
+        anomaly_row = conn.execute(anomaly_query, tuple(anomaly_params)).fetchone()
         total_anomalies_24h = anomaly_row[0] if anomaly_row else 0
 
         # Open incidents
-        incident_row = conn.execute(
-            "SELECT COUNT(*) FROM incidents WHERE status IN ('OPEN', 'INVESTIGATING')"
-        ).fetchone()
-        open_incidents = incident_row[0] if incident_row else 0
+        incident_query = "SELECT i.* FROM incidents i"
+        incident_params = []
+        where_clauses = ["i.status IN ('OPEN', 'INVESTIGATING')"]
+        
+        if user_id:
+            incident_query += " JOIN devices d ON i.device_id = d.id"
+            where_clauses.append("d.user_id = ?")
+            incident_params.append(user_id)
+        if device_id:
+            where_clauses.append("i.device_id = ?")
+            incident_params.append(device_id)
+            
+        final_incident_query = f"{incident_query} WHERE {' AND '.join(where_clauses)}"
+        open_incidents = conn.execute(f"SELECT COUNT(*) FROM ({final_incident_query})", tuple(incident_params)).fetchone()[0]
 
         # Critical incidents
-        critical_row = conn.execute(
-            "SELECT COUNT(*) FROM incidents WHERE severity_label = 'CRITICAL' AND status IN ('OPEN', 'INVESTIGATING')"
-        ).fetchone()
-        critical_incidents = critical_row[0] if critical_row else 0
+        critical_clauses = ["severity_label = 'CRITICAL'", "status IN ('OPEN', 'INVESTIGATING')"]
+        critical_params = []
+        crit_query = "SELECT i.* FROM incidents i"
+        if user_id:
+            crit_query += " JOIN devices d ON i.device_id = d.id"
+            critical_clauses.append("d.user_id = ?")
+            critical_params.append(user_id)
+        if device_id:
+            critical_clauses.append("i.device_id = ?")
+            critical_params.append(device_id)
+        
+        final_crit_query = f"{crit_query} WHERE {' AND '.join(critical_clauses)}"
+        critical_incidents = conn.execute(f"SELECT COUNT(*) FROM ({final_crit_query})", tuple(critical_params)).fetchone()[0]
+
+        # Closed incidents
+        closed_clauses = ["status IN ('RESOLVED', 'FALSE_POSITIVE')"]
+        closed_params = []
+        cl_query = "SELECT i.* FROM incidents i"
+        if user_id:
+            cl_query += " JOIN devices d ON i.device_id = d.id"
+            closed_clauses.append("d.user_id = ?")
+            closed_params.append(user_id)
+        if device_id:
+            closed_clauses.append("i.device_id = ?")
+            closed_params.append(device_id)
+            
+        final_closed_query = f"{cl_query} WHERE {' AND '.join(closed_clauses)}"
+        closed_incidents = conn.execute(f"SELECT COUNT(*) FROM ({final_closed_query})", tuple(closed_params)).fetchone()[0]
 
         # Active devices
         threshold = (datetime.utcnow() - timedelta(minutes=5)).isoformat()
-        device_row = conn.execute(
-            "SELECT COUNT(*) FROM devices WHERE last_seen_at > ?", (threshold,)
-        ).fetchone()
+        device_query = "SELECT COUNT(*) FROM devices WHERE last_seen_at > ?"
+        device_params = [threshold]
+        if user_id:
+            device_query += " AND user_id = ?"
+            device_params.append(user_id)
+            
+        device_row = conn.execute(device_query, tuple(device_params)).fetchone()
         active_devices = device_row[0] if device_row else 0
 
         # Total devices
-        total_row = conn.execute("SELECT COUNT(*) FROM devices").fetchone()
+        total_query = "SELECT COUNT(*) FROM devices"
+        total_params = []
+        if user_id:
+            total_query += " WHERE user_id = ?"
+            total_params.append(user_id)
+            
+        total_row = conn.execute(total_query, tuple(total_params)).fetchone()
         total_devices = total_row[0] if total_row else 0
 
         return {
             "total_events_24h": total_events_24h,
             "total_anomalies_24h": total_anomalies_24h,
             "open_incidents": open_incidents,
+            "closed_incidents": closed_incidents,
             "critical_incidents": critical_incidents,
             "active_devices": active_devices,
             "total_devices": total_devices,

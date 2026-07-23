@@ -104,6 +104,10 @@ if ! id -u "${AGENT_USER}" &>/dev/null; then
     useradd --system --no-create-home --shell /usr/sbin/nologin "${AGENT_USER}" || true
 fi
 
+# Fix permissions so the agent user can read the config
+chown "${AGENT_USER}:${AGENT_USER}" "${CONFIG_FILE}"
+chmod 600 "${CONFIG_FILE}"
+
 # Grant read access to auth.log (many distros restrict it to root/adm)
 usermod -aG adm "${AGENT_USER}" 2>/dev/null || true
 

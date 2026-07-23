@@ -24,7 +24,7 @@ from ai_sentinel.storage.database import create_device, get_device, get_devices_
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/devices", tags=["onboarding"])
+router = APIRouter(tags=["onboarding"])
 
 # ── Rate limiting (per-IP) ────────────────────────────────────────────────
 

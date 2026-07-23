@@ -59,7 +59,7 @@ MAX_EVENTS_PER_BATCH: int = 100
 # ---------------------------------------------------------------------------
 # Detection — Baselining
 # ---------------------------------------------------------------------------
-MIN_BASELINE_EVENTS: int = int(os.getenv("SENTINEL_MIN_BASELINE_EVENTS", "200"))
+MIN_BASELINE_EVENTS: int = int(os.getenv("SENTINEL_MIN_BASELINE_EVENTS", "5"))
 
 # ---------------------------------------------------------------------------
 # Detection — Thresholds

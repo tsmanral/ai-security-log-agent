@@ -1,0 +1,122 @@
+import React, { useState } from 'react';
+import { Terminal, Key, Copy, CheckCircle2, Shield, Settings } from 'lucide-react';
+import { generateToken } from '../services/api';
+
+const ConnectDevice = () => {
+  const [token, setToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const hostIP = window.location.hostname;
+  const serverAddress = `http://${hostIP}:8000`;
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    try {
+      const res = await generateToken();
+      setToken(res.data.token);
+      setCopied(false);
+    } catch (err) {
+      console.error("Failed to generate token", err);
+      alert("Failed to generate token");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const linuxCommand = `curl -s ${serverAddress}/static/installer_linux.sh | sudo bash -s -- --token ${token || '<YOUR_TOKEN>'} --server ${serverAddress}`;
+  const windowsCommand = `python windows_agent_simulator.py`;
+
+  return (
+    <div className="flex flex-col h-full space-y-8 overflow-y-auto pb-10 pr-2 custom-scrollbar">
+      <header className="flex items-center border-b border-[rgba(0,240,255,0.3)] pb-4 shrink-0">
+        <Terminal className="text-[var(--color-primary)] mr-3" size={32} />
+        <div>
+          <h2 className="text-3xl font-display font-bold text-white tracking-widest uppercase">Connect Device</h2>
+        </div>
+      </header>
+
+      <section className="bg-[rgba(255,255,255,0.02)] border border-[rgba(0,240,255,0.15)] rounded p-6">
+        <div className="flex items-start">
+          <Shield className="text-[var(--color-primary)] mr-4 mt-1" size={24} />
+          <div>
+            <h3 className="text-xl font-display text-white mb-2">Secure Registration</h3>
+            <p className="text-[var(--color-muted)] font-mono text-sm mb-6 max-w-3xl">
+              Add a new device to your AI-Sentinel workspace. Generate a one-time registration token below, then run the installer on your target machine. The agent will automatically configure TLS and begin streaming logs to the ingestion pipeline.
+            </p>
+            
+            <button 
+              onClick={handleGenerate}
+              disabled={loading}
+              className="hud-button flex items-center bg-[var(--color-primary)] text-black font-bold mb-6"
+            >
+              <Key size={18} className="mr-2" />
+              {loading ? 'Generating...' : 'Generate New Token'}
+            </button>
+
+            {token && (
+              <div className="bg-[rgba(10,15,25,0.8)] border border-[#05FFA1] rounded p-4 mb-8 flex justify-between items-center">
+                <div>
+                  <div className="text-xs text-[#05FFA1] font-mono mb-1 uppercase tracking-widest">Active Token (Valid for 15 mins)</div>
+                  <div className="text-2xl font-mono text-white tracking-wider">{token}</div>
+                </div>
+                <button 
+                  onClick={() => copyToClipboard(token)}
+                  className="p-2 hover:bg-[rgba(255,255,255,0.1)] rounded transition-colors"
+                >
+                  {copied ? <CheckCircle2 className="text-[#05FFA1]" /> : <Copy className="text-[var(--color-muted)]" />}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-2 gap-8">
+        <section>
+          <h3 className="text-xl font-display text-white flex items-center mb-4">
+            <Settings size={20} className="mr-2 text-[var(--color-primary)]"/> Linux Installation
+          </h3>
+          <div className="bg-[rgba(10,15,25,0.8)] border border-[rgba(0,240,255,0.15)] rounded p-4 relative group">
+            <button 
+              onClick={() => copyToClipboard(linuxCommand)}
+              className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-[rgba(255,255,255,0.1)] rounded"
+            >
+              <Copy size={16} className="text-[var(--color-muted)]" />
+            </button>
+            <pre className="font-mono text-sm text-[var(--color-primary)] whitespace-pre-wrap break-all">
+              {linuxCommand}
+            </pre>
+          </div>
+          <p className="text-xs text-[var(--color-muted)] mt-2 font-mono">Run this command as root or with sudo privileges.</p>
+        </section>
+
+        <section>
+          <h3 className="text-xl font-display text-white flex items-center mb-4">
+            <Settings size={20} className="mr-2 text-[var(--color-primary)]"/> Windows Installation
+          </h3>
+          <div className="bg-[rgba(10,15,25,0.8)] border border-[rgba(0,240,255,0.15)] rounded p-4 relative group">
+            <button 
+              onClick={() => copyToClipboard(windowsCommand)}
+              className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-[rgba(255,255,255,0.1)] rounded"
+            >
+              <Copy size={16} className="text-[var(--color-muted)]" />
+            </button>
+            <pre className="font-mono text-sm text-[var(--color-primary)] whitespace-pre-wrap break-all">
+              {windowsCommand}
+            </pre>
+          </div>
+          <p className="text-xs text-[var(--color-muted)] mt-2 font-mono">Run this script in PowerShell to simulate Windows Event Log ingestion.</p>
+        </section>
+      </div>
+
+    </div>
+  );
+};
+
+export default ConnectDevice;
