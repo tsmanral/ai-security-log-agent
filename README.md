@@ -11,7 +11,7 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg?style=flat-square)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-API-009688.svg?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B.svg?style=flat-square&logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![React](https://img.shields.io/badge/React-Dashboard-61DAFB.svg?style=flat-square&logo=react&logoColor=black)](frontend/)
 [![Tests](https://img.shields.io/badge/smoke_tests-27%2F27_passing-brightgreen.svg?style=flat-square)](tests/test_v4_smoke.py)
 [![GitHub Stars](https://img.shields.io/github/stars/tsmanral/ai-security-log-agent?style=flat-square)](https://github.com/tsmanral/ai-security-log-agent/stargazers)
 
@@ -28,7 +28,7 @@ Enterprise SIEMs like Splunk and Microsoft Sentinel are powerful — and heavy, 
 - 🌐 **Multi-source ingestion** — parsers for SSH auth logs, Syslog, Windows Events, network flows (NetFlow / firewall), and endpoint telemetry through a single raw-log API.
 - 📖 **Threat narratives without an LLM** — a pure-template case-file generator turns correlated anomalies into readable incident stories. Zero API keys, zero recurring cost.
 - 🚨 **Detection rules that matter** — brute force, credential stuffing, port scans, exfiltration, LOLBin abuse, persistence, and lateral movement, all with tunable thresholds and analyst feedback loops.
-- 📊 **Full SOC dashboard** — 10-page Streamlit interface: live alerts, investigation case files, multi-source health, threat intel (AbuseIPDB), model analytics, device behavior, feedback & threshold tuning, and admin management with RBAC + JWT auth.
+- 📊 **Full SOC dashboard** — modern React (Vite) command center with live threat feed, incident drill-down, multi-source health, threat intel (AbuseIPDB), model analytics, device behavior, feedback & threshold tuning, and admin management with RBAC + JWT auth. A legacy Streamlit interface is also included.
 
 ## Quick Start
 
@@ -44,11 +44,13 @@ venv/Scripts/pip install -r requirements.txt   # Linux/macOS: venv/bin/pip
 # 2. Start the API server (creates the database on first launch)
 venv/Scripts/python -m uvicorn server:app --host 0.0.0.0 --port 8000
 
-# 3. In a second terminal, start the dashboard
-venv/Scripts/streamlit run ai_sentinel/ui/dashboard.py
+# 3. In a second terminal, start the React dashboard
+cd frontend
+npm install
+npm run dev
 ```
 
-Open **http://localhost:8501**, register an account, and connect your first device from the **Connect My Device** page — it generates a one-line install command for any Linux host.
+Open **http://localhost:5173**, register an account, and connect your first device from the **Connect Device** page — it generates a one-line install command for any Linux host. The Linux agent auto-detects whether the system uses `/var/log/auth.log` or `journalctl`. On Windows, `python windows_agent_simulator.py` spins up a local test agent.
 
 To validate the full pipeline (parsers, rules, severity, narratives, DB, scheduler):
 
@@ -93,19 +95,23 @@ graph TD
     SV --> INC[Incident Grouping]
     INC --> NB[Narrative Builder<br/>SHAP + MITRE ATT&CK]
     NB --> DB[(SQLite)]
-    DB --> DASH[SOC Dashboard]
+    DB --> DASH[React SOC Dashboard]
 ```
+
+A deeper technical walkthrough lives in [ARCHITECTURE.md](ARCHITECTURE.md), and the platform's design evolution is documented in [docs/V3_VS_V4_EVOLUTION.md](docs/V3_VS_V4_EVOLUTION.md).
 
 Background jobs (APScheduler) handle cross-source correlation, lateral-movement scans, metrics pre-aggregation, geo-resolution, threat-intel caching, drift detection, and data retention — no external queue or cron required.
 
 ## Project Structure
 
 ```
-ai_sentinel/        Core platform: auth, ingestion, detection, storage, scheduler, UI
+ai_sentinel/        Core platform: auth, ingestion, detection, storage, scheduler, legacy UI
+frontend/           React (Vite + TypeScript) SOC dashboard
 tests/              Test suite + end-to-end smoke tests
 datasets/           Synthetic SSH log generator for local experimentation
 fleet_simulator.py  Multi-device fleet traffic simulator
 windows_agent_simulator.py  All-in-one Windows test agent
+windows_live_agent.py       Live Windows event agent
 server.py           FastAPI entry point
 ```
 
