@@ -9,17 +9,18 @@ import logging
 import secrets
 import time
 import uuid
-from collections import defaultdict, deque
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from passlib.hash import bcrypt
+import bcrypt
 from pydantic import BaseModel, Field, constr
 
 from lsadra.config import (
     MAX_HOSTNAME_LENGTH,
+    RATE_LIMIT_MAX_KEYS,
     RATE_LIMIT_REGISTER_PER_MIN,
 )
+from lsadra.ratelimit import SlidingWindowRateLimiter
 from lsadra.onboarding.token_manager import validate_and_consume
 from lsadra.storage.database import create_device, get_device, get_devices_for_user
 
@@ -29,18 +30,17 @@ router = APIRouter(tags=["onboarding"])
 
 # ── Rate limiting (per-IP) ────────────────────────────────────────────────
 
-_ip_hits: Dict[str, deque] = defaultdict(deque)
+# Bounded LRU limiter — caps tracked client IPs so spoofed sources cannot grow
+# memory without bound (§6 #5).
+_ip_limiter = SlidingWindowRateLimiter(
+    limit=RATE_LIMIT_REGISTER_PER_MIN, window_seconds=60, max_keys=RATE_LIMIT_MAX_KEYS
+)
 
 
 def _check_ip_rate(request: Request) -> None:
     client_ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    window = _ip_hits[client_ip]
-    while window and window[0] < now - 60:
-        window.popleft()
-    if len(window) >= RATE_LIMIT_REGISTER_PER_MIN:
+    if not _ip_limiter.allow(client_ip, time.time()):
         raise HTTPException(status_code=429, detail="Registration rate limit exceeded.")
-    window.append(now)
 
 
 # ── Pydantic schemas ─────────────────────────────────────────────────────
@@ -96,7 +96,7 @@ async def register_device(body: RegisterRequest, request: Request) -> RegisterRe
     device_id = str(uuid.uuid4())
     api_key = secrets.token_urlsafe(32)
 
-    api_key_hash = bcrypt.hash(api_key)
+    api_key_hash = bcrypt.hashpw(api_key.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     create_device(
         device_id=device_id,

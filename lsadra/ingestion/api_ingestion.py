@@ -11,12 +11,11 @@ FastAPI router that accepts:
 import hmac
 import logging
 import time
-from collections import defaultdict, deque
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import bcrypt
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from passlib.hash import bcrypt
 from pydantic import BaseModel, Field, constr
 
 from lsadra.config import (
@@ -25,7 +24,9 @@ from lsadra.config import (
     MAX_RAW_MESSAGE_LENGTH,
     MAX_USERNAME_LENGTH,
     RATE_LIMIT_EVENTS_PER_MIN,
+    RATE_LIMIT_MAX_KEYS,
 )
+from lsadra.ratelimit import SlidingWindowRateLimiter
 from lsadra.storage.database import (
     get_device,
     insert_events_batch,
@@ -59,19 +60,17 @@ class EventBatch(BaseModel):
 
 # ── Simple in-memory rate limiter ─────────────────────────────────────────
 
-_device_hits: Dict[str, deque] = defaultdict(deque)
+# Bounded LRU limiter — caps tracked device keys so dead/spoofed IDs cannot grow
+# memory without bound (§6 #5).
+_device_limiter = SlidingWindowRateLimiter(
+    limit=RATE_LIMIT_EVENTS_PER_MIN, window_seconds=60, max_keys=RATE_LIMIT_MAX_KEYS
+)
 
 
 def _check_rate_limit(device_id: str) -> None:
     """Raise 429 if the device exceeds its per-minute event batch limit."""
-    now = time.time()
-    window = _device_hits[device_id]
-    # Purge entries older than 60 s
-    while window and window[0] < now - 60:
-        window.popleft()
-    if len(window) >= RATE_LIMIT_EVENTS_PER_MIN:
+    if not _device_limiter.allow(device_id, time.time()):
         raise HTTPException(status_code=429, detail="Rate limit exceeded for this device.")
-    window.append(now)
 
 
 # ── Auth dependency ───────────────────────────────────────────────────────
@@ -94,7 +93,13 @@ def _authenticate_device(x_device_id: str = Header(...), x_api_key: str = Header
         raise HTTPException(status_code=401, detail="Device has no credential set.")
 
     if stored_hash.startswith("$2"):
-        ok = bcrypt.verify(x_api_key, stored_hash)
+        # Direct bcrypt (passlib dropped, §6 #15). Fail CLOSED on any error —
+        # e.g. an over-72-byte key from an attacker, which bcrypt rejects with
+        # ValueError; that must be a 401, never a 500 or a pass-through.
+        try:
+            ok = bcrypt.checkpw(x_api_key.encode("utf-8"), stored_hash.encode("utf-8"))
+        except (ValueError, TypeError):
+            ok = False
     else:
         ok = hmac.compare_digest(stored_hash, x_api_key)
     if not ok:

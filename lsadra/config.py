@@ -5,9 +5,12 @@ All tuneable parameters, file paths, secrets, and resource limits are defined he
 Environment variables override defaults where noted.
 """
 
+import logging
 import os
 import secrets
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -19,16 +22,33 @@ LOG_DIR = PROJECT_ROOT / "logs"
 MODEL_DIR = DATA_DIR / "models"
 
 # ---------------------------------------------------------------------------
+# Runtime mode
+# ---------------------------------------------------------------------------
+# Dev mode relaxes production boot guards (per-boot JWT secret, optional TLS)
+# for LOCAL DEVELOPMENT ONLY. Never set true in production. (§6 #4/#6)
+DEV_MODE: bool = os.getenv("SENTINEL_DEV_MODE", "false").lower() == "true"
+
+# ---------------------------------------------------------------------------
 # Networking
 # ---------------------------------------------------------------------------
 API_HOST: str = os.getenv("SENTINEL_API_HOST", "0.0.0.0")
 API_PORT: int = int(os.getenv("SENTINEL_API_PORT", "8000"))
 DASHBOARD_PORT: int = int(os.getenv("SENTINEL_DASH_PORT", "8501"))
 
+# CORS: explicit browser-origin allowlist for the SPA (comma-separated).
+# Empty (default) = no cross-origin access. Agents authenticate with header
+# tokens, not browser credentials, so credentialed CORS is never enabled.
+CORS_ALLOWED_ORIGINS: list = [
+    o.strip() for o in os.getenv("SENTINEL_CORS_ORIGINS", "").split(",") if o.strip()
+]
+
 # ---------------------------------------------------------------------------
 # Security — TLS
 # ---------------------------------------------------------------------------
-REQUIRE_TLS: bool = os.getenv("SENTINEL_REQUIRE_TLS", "false").lower() == "true"
+# TLS required by default OUTSIDE dev mode — agents ship API keys over the wire,
+# so plaintext HTTP must be an explicit dev-only opt-out. (§6 #6)
+_require_tls_default = "false" if DEV_MODE else "true"
+REQUIRE_TLS: bool = os.getenv("SENTINEL_REQUIRE_TLS", _require_tls_default).lower() == "true"
 
 # Reverse-proxy IPs whose X-Forwarded-Proto header may be trusted for TLS
 # enforcement (comma-separated). Empty (default) = header is never trusted.
@@ -41,9 +61,26 @@ TLS_KEY_PATH: str = os.getenv("SENTINEL_TLS_KEY", "")
 # ---------------------------------------------------------------------------
 # Security — JWT / RBAC
 # ---------------------------------------------------------------------------
-# Secret key used to sign JWTs / session tokens (generate once, store in env)
-JWT_SECRET: str = os.getenv("SENTINEL_JWT_SECRET", secrets.token_urlsafe(32))
-SECRET_KEY: str = os.getenv("SENTINEL_SECRET_KEY", JWT_SECRET)  # backward compat
+# Secret used to sign JWTs. Outside dev mode a stable secret is MANDATORY — a
+# per-boot random secret silently invalidates every issued token on restart, so
+# the server refuses to start without SENTINEL_JWT_SECRET. The old silent
+# SECRET_KEY -> JWT_SECRET fallback is removed. (§6 #4)
+_jwt_secret_env = os.getenv("SENTINEL_JWT_SECRET")
+if _jwt_secret_env:
+    JWT_SECRET: str = _jwt_secret_env
+elif DEV_MODE:
+    JWT_SECRET = secrets.token_urlsafe(32)
+    logger.warning(
+        "SENTINEL_DEV_MODE: no SENTINEL_JWT_SECRET set — using a random per-boot "
+        "secret; all issued tokens invalidate on restart. Set SENTINEL_JWT_SECRET "
+        "for stable sessions."
+    )
+else:
+    raise RuntimeError(
+        "SENTINEL_JWT_SECRET is required outside dev mode. Refusing to start with "
+        "an insecure per-boot secret. Set SENTINEL_JWT_SECRET, or set "
+        "SENTINEL_DEV_MODE=true for local development."
+    )
 TOKEN_ALGORITHM: str = "HS256"
 JWT_EXPIRATION_MINUTES: int = int(os.getenv("SENTINEL_JWT_EXPIRATION_MINUTES", "480"))
 REGISTRATION_TOKEN_LIFETIME_MINUTES: int = 15  # single-use, short-lived
@@ -53,6 +90,9 @@ REGISTRATION_TOKEN_LIFETIME_MINUTES: int = 15  # single-use, short-lived
 # ---------------------------------------------------------------------------
 RATE_LIMIT_REGISTER_PER_MIN: int = 5   # POST /api/devices/register per IP
 RATE_LIMIT_EVENTS_PER_MIN: int = 60    # POST /api/events/batch per device
+# Max distinct rate-limit keys (devices / IPs) tracked before LRU eviction —
+# bounds memory against dead or spoofed identifiers. (§6 #5)
+RATE_LIMIT_MAX_KEYS: int = int(os.getenv("SENTINEL_RATE_LIMIT_MAX_KEYS", "10000"))
 
 # ---------------------------------------------------------------------------
 # Input Validation Caps

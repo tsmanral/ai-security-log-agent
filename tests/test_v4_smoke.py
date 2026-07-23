@@ -23,6 +23,10 @@ import tempfile
 # Allow running as a script from anywhere: put the repo root on sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Boot in dev mode so production config guards (§6 #4 JWT secret, #6 TLS) don't
+# trip when the smoke suite imports lsadra.config.
+os.environ.setdefault("SENTINEL_DEV_MODE", "true")
+
 PASS = 0
 FAIL = 0
 
