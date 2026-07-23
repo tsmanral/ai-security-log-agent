@@ -20,6 +20,9 @@ import sqlite3
 import os
 import tempfile
 
+# Allow running as a script from anywhere: put the repo root on sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 PASS = 0
 FAIL = 0
 

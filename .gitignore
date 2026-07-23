@@ -29,6 +29,9 @@ dist/
 # Local documentation workspace (Obsidian is personal/local only)
 .obsidian/
 
+# Private planning documents (local only, never published)
+MASTER_PLAN.md
+
 # Runtime logs (entire directory)
 logs/
 

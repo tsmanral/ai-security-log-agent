@@ -1,117 +1,145 @@
-# AI-Sentinel V4: AI-Native Security Log Agent
+<div align="center">
 
-AI-Sentinel is an advanced, offline-first SIEM platform designed for enterprise-grade threat detection and behavioral analysis.
+# 🛡️ AI-Sentinel
+
+### Open-source, explainable SIEM anomaly detection — built to run anywhere.
+
+**Real-time, multi-source log detection with ML ensembles, SHAP explainability, and human-readable threat narratives — no LLM API keys required.**
+
+<br/>
+
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg?style=flat-square)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-API-009688.svg?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B.svg?style=flat-square&logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![Tests](https://img.shields.io/badge/smoke_tests-27%2F27_passing-brightgreen.svg?style=flat-square)](tests/test_v4_smoke.py)
+[![GitHub Stars](https://img.shields.io/github/stars/tsmanral/ai-security-log-agent?style=flat-square)](https://github.com/tsmanral/ai-security-log-agent/stargazers)
+
+</div>
+
+---
+
+## Why AI-Sentinel?
+
+Enterprise SIEMs like Splunk and Microsoft Sentinel are powerful — and heavy, expensive, and opaque. Lightweight consumer tools watch the network but have no real detection intelligence. **AI-Sentinel fills the gap**: a self-hostable SOC platform that explains *why* every alert fired.
+
+- 🧠 **Multi-layer ML detection** — statistical baselining (Z-score), ensemble models (Isolation Forest, LOF, One-Class SVM), and a PyTorch autoencoder, with drift tracking via Population Stability Index.
+- 🔍 **Explainable by design** — SHAP feature attribution, composite severity scoring with a plain-English breakdown per alert, and MITRE ATT&CK technique mapping with confidence scores.
+- 🌐 **Multi-source ingestion** — parsers for SSH auth logs, Syslog, Windows Events, network flows (NetFlow / firewall), and endpoint telemetry through a single raw-log API.
+- 📖 **Threat narratives without an LLM** — a pure-template case-file generator turns correlated anomalies into readable incident stories. Zero API keys, zero recurring cost.
+- 🚨 **Detection rules that matter** — brute force, credential stuffing, port scans, exfiltration, LOLBin abuse, persistence, and lateral movement, all with tunable thresholds and analyst feedback loops.
+- 📊 **Full SOC dashboard** — 10-page Streamlit interface: live alerts, investigation case files, multi-source health, threat intel (AbuseIPDB), model analytics, device behavior, feedback & threshold tuning, and admin management with RBAC + JWT auth.
 
 ## Quick Start
 
-### 1. Backend Setup (FastAPI + SQLite)
-```bash
-# Install dependencies
-pip install -r requirements.txt
+> Requires **Python 3.12** (scikit-learn is not yet compatible with 3.14 — check versions with `py -0` on Windows).
 
-# Start the server (Port 8000)
-$env:PYTHONPATH = (Get-Location).Path
-python server.py
+```bash
+# 1. Clone and set up
+git clone https://github.com/tsmanral/ai-security-log-agent.git
+cd ai-security-log-agent
+py -3.12 -m venv venv            # Linux/macOS: python3.12 -m venv venv
+venv/Scripts/pip install -r requirements.txt   # Linux/macOS: venv/bin/pip
+
+# 2. Start the API server (creates the database on first launch)
+venv/Scripts/python -m uvicorn server:app --host 0.0.0.0 --port 8000
+
+# 3. In a second terminal, start the dashboard
+venv/Scripts/streamlit run ai_sentinel/ui/dashboard.py
 ```
 
-### 2. Frontend Setup (React + Vite)
+Open **http://localhost:8501**, register an account, and connect your first device from the **Connect My Device** page — it generates a one-line install command for any Linux host.
+
+To validate the full pipeline (parsers, rules, severity, narratives, DB, scheduler):
+
 ```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Launch the dashboard (Port 5173)
-npm run dev
-```
-*The dashboard will spawn at `http://localhost:5173`. Log in with `testuser` / `testuser` for mock data. For real testing, register a new account and connect a device.*
-
-### 3. Connect a Device (Windows Simulator)
-To test the pipeline locally on Windows:
-```bash
-python windows_agent_simulator.py
+venv/Scripts/python tests/test_v4_smoke.py    # expected: 27/27 passed
 ```
 
-### 4. Connect a Linux Device
-Run this command in your Linux/WSL terminal (replace `<TOKEN>` and `<IP>`):
+### Docker (production)
+
 ```bash
-curl -s http://<WINDOWS_IP>:8000/static/installer_linux.sh | sudo bash -s -- --token <TOKEN> --server http://<WINDOWS_IP>:8000
-```
-*Note: The V4 agent automatically detects if your system uses traditional `/var/log/auth.log` or modern `journalctl` and switches sources automatically.*
-
----
-
-## 🛡️ Demo Guide: Live Threat Detection
-
-Use these test cases to demonstrate real-time ingestion and behavioral analysis on the dashboard.
-
-### **Test Case 1: Privilege Escalation Attempt**
-Run an unauthorized `sudo` command on the Linux host:
-```bash
-sudo ls /root
-
-sudo journalctl -u ai-sentinel-agent -f
-```
-*Check **Command Center** → "Live Threat Feed" or the **Live Event Stream** page. You should see a `sudo_command` event from your device within 2 seconds.*
-
-### **Test Case 2: Brute Force Simulation**
-Attempt to switch to a non-existent user multiple times:
-```bash
-sudo hacker_alpha
-# (Enter random password 3 times)
-```
-*The dashboard will flag these as `ssh_failed_password` and eventually group them into a "Brute Force" incident.*
-
-Trigger a burst of activity to see the 2-second flush or 50-event batch logic:
-```bash
-for i in {1..10}; do sudo non_existent_command_$i; done
-```
-*Note: The V4 agent flushes data every 2 seconds for high-responsiveness demos.*
-
----
-
-## 🧹 Clean Slate (Reset for Demo)
-
-To completely remove the agent and start fresh for a new demo:
-
-### **1. Wipe Linux Host**
-Run these on the Linux machine:
-```bash
-sudo systemctl stop ai-sentinel-agent
-sudo systemctl disable ai-sentinel-agent
-sudo rm -rf /opt/ai-sentinel-agent/
-sudo rm -rf /etc/ai-sentinel-agent/
-sudo rm /etc/systemd/system/ai-sentinel-agent.service
-sudo systemctl daemon-reload
+cp .env.example .env    # set JWT secrets, TLS flags, optional AbuseIPDB key
+docker compose up -d
 ```
 
-### **2. Reset Dashboard Data**
-1. Go to **Multi-Source** tab.
-2. Click the **Trash** icon next to your device to wipe its history (Events, Anomalies, Incidents) from the database.
-3. Generate a new token in the **Connect Device** tab for the fresh install.
+This starts the API (`:8000`), the dashboard (`:8501`), and an idle agent simulator.
 
----
+## Ingesting Logs
 
-## Architecture Data Flow
-...
+Any log line from any source, through one endpoint:
+
+```bash
+curl -X POST http://localhost:8000/api/events/raw \
+  -H "Content-Type: application/json" \
+  -H "X-Device-Id: <device-id>" -H "X-Api-Key: <api-key>" \
+  -d '{"lines": [{"raw_line": "Jan  5 12:34:56 server sudo[999]: root : COMMAND=/bin/bash", "source_hint": "syslog"}]}'
+```
+
+Per-source ingestion health is available at `GET /api/events/stats`.
+
+## Architecture
 
 ```mermaid
 graph TD
-    A[Endpoint Agents] -->|HTTPS + API Key| B[V3 /api/events/batch]
-    R[Raw Log Sources] -->|HTTPS + API Key| V[V4 /api/events/raw]
-    V --> IM[IngestionManager]
-    IM --> Parsers[Multi-Source Parsers: Syslog, Windows, Network, Endpoint]
-    Parsers --> FE[Enhanced Feature Extractor]
-    FE --> ML[Behavioral Analysis / Ensemble]
-    ML --> NE[Narrative Engine / PureLogic]
-    NE --> DB[(SQLite / sentinel_v3.db)]
-    DB --> UI[React SOC Dashboard]
+    A[Endpoint Agents] -->|HTTPS + API Key| B[Ingestion API]
+    R[Raw Log Sources] -->|HTTPS + API Key| V[Raw Ingestion API]
+    V --> IM[Ingestion Manager<br/>Syslog · Windows · NetFlow · Endpoint · SSH]
+    IM --> FE[Feature Extractor]
+    B --> C[Detection Orchestrator<br/>Z-Score · ML Ensemble · Autoencoder]
+    FE --> RE[Rule Engine + Lateral Movement]
+    RE --> SV[Dynamic Severity Scoring]
+    C --> SV
+    SV --> INC[Incident Grouping]
+    INC --> NB[Narrative Builder<br/>SHAP + MITRE ATT&CK]
+    NB --> DB[(SQLite)]
+    DB --> DASH[SOC Dashboard]
 ```
 
-## V3 vs V4 Changes
-| Feature | V3 Architecture | V4 Architecture |
-| :--- | :--- | :--- |
-| **Ingestion** | Single-source (SSH/Windows) | Modular Multi-source (Syslog, Network, Endpoint) |
-| **Logic** | Heuristic Rules | Narrative Engine (PureLogic V2) |
-| **Database** | Flat SQLite Schema | Relational & Metrics-Optimized |
-| **UI** | Basic Monitoring | Advanced SOC HUD with Drift & SHAP |
+Background jobs (APScheduler) handle cross-source correlation, lateral-movement scans, metrics pre-aggregation, geo-resolution, threat-intel caching, drift detection, and data retention — no external queue or cron required.
+
+## Project Structure
+
+```
+ai_sentinel/        Core platform: auth, ingestion, detection, storage, scheduler, UI
+tests/              Test suite + end-to-end smoke tests
+datasets/           Synthetic SSH log generator for local experimentation
+fleet_simulator.py  Multi-device fleet traffic simulator
+windows_agent_simulator.py  All-in-one Windows test agent
+server.py           FastAPI entry point
+```
+
+## Contributing
+
+Contributions are welcome! The workflow is intentionally simple:
+
+1. **Fork** the repo and create a feature branch from `main` (`git checkout -b feature/my-improvement`).
+2. Make your change and run the smoke tests (`python tests/test_v4_smoke.py`).
+3. Open a **pull request** against `main` with a clear description.
+
+`main` is the only long-lived branch — all work lands through short-lived feature branches and PRs. Bug reports and feature ideas are welcome in [Issues](https://github.com/tsmanral/ai-security-log-agent/issues).
+
+## License
+
+Distributed under the **GNU Affero General Public License v3.0**. See [LICENSE](LICENSE) for details.
+
+## Author
+
+**Tribhuwan Singh**
+
+[![GitHub](https://img.shields.io/badge/GitHub-tsmanral-181717?style=flat-square&logo=github)](https://github.com/tsmanral)
+[![Email](https://img.shields.io/badge/Email-tribhuwan.singh1108%40gmail.com-EA4335?style=flat-square&logo=gmail&logoColor=white)](mailto:tribhuwan.singh1108@gmail.com)
+
+## Contributors
+
+Thanks to everyone who has contributed to AI-Sentinel:
+
+<a href="https://github.com/tsmanral/ai-security-log-agent/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=tsmanral/ai-security-log-agent" alt="Contributors" />
+</a>
+
+---
+
+<div align="center">
+⭐ If AI-Sentinel is useful to you, consider starring the repo — it helps the project reach more people.
+</div>

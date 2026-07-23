@@ -4,6 +4,9 @@ Patches DB_PATH to a temp file with the V4 schema pre-applied.
 """
 import os, sys, sqlite3, tempfile, json
 
+# Allow running as a script from anywhere: put the repo root on sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # ── patch DB_PATH before any import ─────────────────────────
 tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
 tmp.close()
