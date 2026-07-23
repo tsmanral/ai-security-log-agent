@@ -15,8 +15,8 @@ from collections import defaultdict, deque
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import bcrypt
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from passlib.hash import bcrypt
 from pydantic import BaseModel, Field, constr
 
 from lsadra.config import (
@@ -94,7 +94,13 @@ def _authenticate_device(x_device_id: str = Header(...), x_api_key: str = Header
         raise HTTPException(status_code=401, detail="Device has no credential set.")
 
     if stored_hash.startswith("$2"):
-        ok = bcrypt.verify(x_api_key, stored_hash)
+        # Direct bcrypt (passlib dropped, §6 #15). Fail CLOSED on any error —
+        # e.g. an over-72-byte key from an attacker, which bcrypt rejects with
+        # ValueError; that must be a 401, never a 500 or a pass-through.
+        try:
+            ok = bcrypt.checkpw(x_api_key.encode("utf-8"), stored_hash.encode("utf-8"))
+        except (ValueError, TypeError):
+            ok = False
     else:
         ok = hmac.compare_digest(stored_hash, x_api_key)
     if not ok:

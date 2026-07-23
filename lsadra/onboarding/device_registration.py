@@ -13,7 +13,7 @@ from collections import defaultdict, deque
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from passlib.hash import bcrypt
+import bcrypt
 from pydantic import BaseModel, Field, constr
 
 from lsadra.config import (
@@ -96,7 +96,7 @@ async def register_device(body: RegisterRequest, request: Request) -> RegisterRe
     device_id = str(uuid.uuid4())
     api_key = secrets.token_urlsafe(32)
 
-    api_key_hash = bcrypt.hash(api_key)
+    api_key_hash = bcrypt.hashpw(api_key.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     create_device(
         device_id=device_id,
