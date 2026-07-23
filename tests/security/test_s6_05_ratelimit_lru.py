@@ -47,3 +47,24 @@ def test_window_slides_and_allows_after_expiry():
     assert rl.allow("k", 1000.0) is True
     assert rl.allow("k", 1000.0) is False        # still within the window
     assert rl.allow("k", 1000.0 + 61) is True    # window elapsed -> allowed again
+
+
+def test_distinct_key_flood_does_not_reset_active_counter():
+    """Commit-review follow-up: LRU eviction must NOT let a flood of distinct
+    keys reset an ACTIVE key's window (rate-limit bypass). An at-limit key must
+    stay blocked even after the cap is pressured by many other keys.
+    """
+    rl = SlidingWindowRateLimiter(limit=2, window_seconds=60, max_keys=10)
+    t = 1000.0
+    assert rl.allow("victim", t) is True
+    assert rl.allow("victim", t) is True
+    assert rl.allow("victim", t) is False  # victim now at its limit
+
+    # Flood many distinct keys within the same window to force cap pressure.
+    for i in range(100):
+        rl.allow(f"flood-{i}", t)
+
+    # victim's counter must survive the flood — still blocked, no bypass —
+    # and the limiter stays bounded.
+    assert rl.allow("victim", t) is False
+    assert len(rl) <= 10

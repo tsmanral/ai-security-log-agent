@@ -26,6 +26,7 @@ class SlidingWindowRateLimiter:
 
     def allow(self, key: str, now: float) -> bool:
         """Record a hit for ``key`` at time ``now``; return False if over limit."""
+        existed = key in self._hits
         window = self._hits.get(key)
         if window is None:
             window = deque()
@@ -41,9 +42,32 @@ class SlidingWindowRateLimiter:
         if allowed:
             window.append(now)
 
+        # Enforce the key cap. NEVER evict an ACTIVE key to make room: evicting
+        # it resets its window, which would let an attacker bypass the limit for
+        # any key (including their own) by flooding distinct keys until the
+        # victim is pushed out. Evict only an idle (aged-out) key; if the cap is
+        # full of active keys, drop THIS new key and deny — fail closed.
+        # (§6 #5 + commit-review follow-up)
         self._maybe_sweep(now)
-        self._enforce_cap()
+        if len(self._hits) > self._max_keys:
+            if not self._evict_one_idle(now) and not existed:
+                del self._hits[key]
+                return False
+
         return allowed
+
+    def _evict_one_idle(self, now: float) -> bool:
+        """Evict one idle (empty or fully aged-out) key, oldest-first. True if evicted."""
+        cutoff = now - self._window
+        victim = None
+        for k, w in self._hits.items():          # OrderedDict iterates LRU-first
+            if not w or w[-1] <= cutoff:
+                victim = k
+                break
+        if victim is None:
+            return False
+        del self._hits[victim]
+        return True
 
     def _maybe_sweep(self, now: float) -> None:
         """Throttled idle-key eviction (at most once per window)."""
@@ -54,11 +78,6 @@ class SlidingWindowRateLimiter:
         stale = [k for k, w in self._hits.items() if not w or w[-1] <= cutoff]
         for k in stale:
             del self._hits[k]
-
-    def _enforce_cap(self) -> None:
-        """Hard bound: evict least-recently-used keys beyond ``max_keys``."""
-        while len(self._hits) > self._max_keys:
-            self._hits.popitem(last=False)
 
     def __len__(self) -> int:
         return len(self._hits)
