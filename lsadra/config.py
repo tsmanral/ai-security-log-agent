@@ -7,7 +7,19 @@ Environment variables override defaults where noted.
 
 import os
 import secrets
+import warnings
 from pathlib import Path
+
+# Loudly flag legacy SENTINEL_* env vars — they were renamed to LSADRA_* and are
+# now IGNORED. Without this, an upgrader silently falls back to defaults: the JWT
+# secret regenerates (sessions / cross-service auth break) and controls like TLS
+# enforcement revert. Fail loud, not silent.
+_legacy_env = sorted(k for k in os.environ if k.startswith("SENTINEL_"))
+if _legacy_env:
+    warnings.warn(
+        "Ignoring legacy env vars (rename SENTINEL_* -> LSADRA_*): " + ", ".join(_legacy_env),
+        stacklevel=2,
+    )
 
 # ---------------------------------------------------------------------------
 # Paths
