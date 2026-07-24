@@ -21,31 +21,31 @@ MODEL_DIR = DATA_DIR / "models"
 # ---------------------------------------------------------------------------
 # Networking
 # ---------------------------------------------------------------------------
-API_HOST: str = os.getenv("SENTINEL_API_HOST", "0.0.0.0")
-API_PORT: int = int(os.getenv("SENTINEL_API_PORT", "8000"))
-DASHBOARD_PORT: int = int(os.getenv("SENTINEL_DASH_PORT", "8501"))
+API_HOST: str = os.getenv("LSADRA_API_HOST", "0.0.0.0")
+API_PORT: int = int(os.getenv("LSADRA_API_PORT", "8000"))
+DASHBOARD_PORT: int = int(os.getenv("LSADRA_DASH_PORT", "8501"))
 
 # ---------------------------------------------------------------------------
 # Security — TLS
 # ---------------------------------------------------------------------------
-REQUIRE_TLS: bool = os.getenv("SENTINEL_REQUIRE_TLS", "false").lower() == "true"
+REQUIRE_TLS: bool = os.getenv("LSADRA_REQUIRE_TLS", "false").lower() == "true"
 
 # Reverse-proxy IPs whose X-Forwarded-Proto header may be trusted for TLS
 # enforcement (comma-separated). Empty (default) = header is never trusted.
 TRUSTED_PROXY_IPS: frozenset = frozenset(
-    ip.strip() for ip in os.getenv("SENTINEL_TRUSTED_PROXY_IPS", "").split(",") if ip.strip()
+    ip.strip() for ip in os.getenv("LSADRA_TRUSTED_PROXY_IPS", "").split(",") if ip.strip()
 )
-TLS_CERT_PATH: str = os.getenv("SENTINEL_TLS_CERT", "")
-TLS_KEY_PATH: str = os.getenv("SENTINEL_TLS_KEY", "")
+TLS_CERT_PATH: str = os.getenv("LSADRA_TLS_CERT", "")
+TLS_KEY_PATH: str = os.getenv("LSADRA_TLS_KEY", "")
 
 # ---------------------------------------------------------------------------
 # Security — JWT / RBAC
 # ---------------------------------------------------------------------------
 # Secret key used to sign JWTs / session tokens (generate once, store in env)
-JWT_SECRET: str = os.getenv("SENTINEL_JWT_SECRET", secrets.token_urlsafe(32))
-SECRET_KEY: str = os.getenv("SENTINEL_SECRET_KEY", JWT_SECRET)  # backward compat
+JWT_SECRET: str = os.getenv("LSADRA_JWT_SECRET", secrets.token_urlsafe(32))
+SECRET_KEY: str = os.getenv("LSADRA_SECRET_KEY", JWT_SECRET)  # backward compat
 TOKEN_ALGORITHM: str = "HS256"
-JWT_EXPIRATION_MINUTES: int = int(os.getenv("SENTINEL_JWT_EXPIRATION_MINUTES", "480"))
+JWT_EXPIRATION_MINUTES: int = int(os.getenv("LSADRA_JWT_EXPIRATION_MINUTES", "480"))
 REGISTRATION_TOKEN_LIFETIME_MINUTES: int = 15  # single-use, short-lived
 
 # ---------------------------------------------------------------------------
@@ -65,7 +65,7 @@ MAX_EVENTS_PER_BATCH: int = 100
 # ---------------------------------------------------------------------------
 # Detection — Baselining
 # ---------------------------------------------------------------------------
-MIN_BASELINE_EVENTS: int = int(os.getenv("SENTINEL_MIN_BASELINE_EVENTS", "5"))
+MIN_BASELINE_EVENTS: int = int(os.getenv("LSADRA_MIN_BASELINE_EVENTS", "5"))
 
 # ---------------------------------------------------------------------------
 # Detection — Thresholds
@@ -78,22 +78,22 @@ AUTOENCODER_PERCENTILE_THRESHOLD: float = 95.0  # reconstruction-error percentil
 # Severity Scoring
 # ---------------------------------------------------------------------------
 SEVERITY_THRESHOLDS: dict = {
-    "CRITICAL": float(os.getenv("SENTINEL_SEVERITY_CRITICAL", "0.9")),
-    "HIGH": float(os.getenv("SENTINEL_SEVERITY_HIGH", "0.7")),
-    "MEDIUM": float(os.getenv("SENTINEL_SEVERITY_MEDIUM", "0.4")),
-    "LOW": float(os.getenv("SENTINEL_SEVERITY_LOW", "0.0")),
+    "CRITICAL": float(os.getenv("LSADRA_SEVERITY_CRITICAL", "0.9")),
+    "HIGH": float(os.getenv("LSADRA_SEVERITY_HIGH", "0.7")),
+    "MEDIUM": float(os.getenv("LSADRA_SEVERITY_MEDIUM", "0.4")),
+    "LOW": float(os.getenv("LSADRA_SEVERITY_LOW", "0.0")),
 }
 
 # ---------------------------------------------------------------------------
 # Incident Management
 # ---------------------------------------------------------------------------
-INCIDENT_WINDOW_MINUTES: int = int(os.getenv("SENTINEL_INCIDENT_WINDOW_MINUTES", "15"))
+INCIDENT_WINDOW_MINUTES: int = int(os.getenv("LSADRA_INCIDENT_WINDOW_MINUTES", "15"))
 
 # ---------------------------------------------------------------------------
 # Device Monitoring
 # ---------------------------------------------------------------------------
 DEVICE_ONLINE_THRESHOLD_MINUTES: int = int(
-    os.getenv("SENTINEL_DEVICE_ONLINE_THRESHOLD_MINUTES", "5")
+    os.getenv("LSADRA_DEVICE_ONLINE_THRESHOLD_MINUTES", "5")
 )
 
 # ---------------------------------------------------------------------------
@@ -107,26 +107,26 @@ AUTOENCODER_LR: float = 1e-3
 # ---------------------------------------------------------------------------
 # Feature Drift Detection
 # ---------------------------------------------------------------------------
-PSI_DRIFT_THRESHOLD: float = float(os.getenv("SENTINEL_PSI_DRIFT_THRESHOLD", "0.2"))
-FP_RATE_THRESHOLD: float = float(os.getenv("SENTINEL_FP_RATE_THRESHOLD", "0.15"))
+PSI_DRIFT_THRESHOLD: float = float(os.getenv("LSADRA_PSI_DRIFT_THRESHOLD", "0.2"))
+FP_RATE_THRESHOLD: float = float(os.getenv("LSADRA_FP_RATE_THRESHOLD", "0.15"))
 
 # ---------------------------------------------------------------------------
 # Threat Intelligence
 # ---------------------------------------------------------------------------
-ABUSEIPDB_API_KEY: str = os.getenv("SENTINEL_ABUSEIPDB_API_KEY", "")
-THREAT_INTEL_CACHE_HOURS: int = int(os.getenv("SENTINEL_TI_CACHE_HOURS", "24"))
+ABUSEIPDB_API_KEY: str = os.getenv("LSADRA_ABUSEIPDB_API_KEY", "")
+THREAT_INTEL_CACHE_HOURS: int = int(os.getenv("LSADRA_TI_CACHE_HOURS", "24"))
 
 # ---------------------------------------------------------------------------
 # Metrics Aggregation
 # ---------------------------------------------------------------------------
 METRICS_AGGREGATION_INTERVAL_MINUTES: int = int(
-    os.getenv("SENTINEL_METRICS_INTERVAL_MINUTES", "5")
+    os.getenv("LSADRA_METRICS_INTERVAL_MINUTES", "5")
 )
 
 # ---------------------------------------------------------------------------
 # Data Retention
 # ---------------------------------------------------------------------------
-RETENTION_DAYS: int = int(os.getenv("SENTINEL_RETENTION_DAYS", "30"))
+RETENTION_DAYS: int = int(os.getenv("LSADRA_RETENTION_DAYS", "30"))
 DATA_RETENTION_DAYS: int = RETENTION_DAYS  # alias
 
 # ---------------------------------------------------------------------------
@@ -135,41 +135,41 @@ DATA_RETENTION_DAYS: int = RETENTION_DAYS  # alias
 # ---------------------------------------------------------------------------
 
 # Ingestion parser chain: maximum bytes stored per raw log line
-MAX_RAW_LINE_LENGTH: int = int(os.getenv("SENTINEL_V4_MAX_RAW_LINE", "2048"))
+MAX_RAW_LINE_LENGTH: int = int(os.getenv("LSADRA_V4_MAX_RAW_LINE", "2048"))
 
 # Ingestion health monitoring: minutes of silence before a source is flagged
 INGESTION_SILENCE_THRESHOLD_MINUTES: int = int(
-    os.getenv("SENTINEL_V4_SILENCE_THRESHOLD_MINUTES", "30")
+    os.getenv("LSADRA_V4_SILENCE_THRESHOLD_MINUTES", "30")
 )
 
 # Lateral movement detection: look-back window
 LATERAL_MOVEMENT_WINDOW_MINUTES: int = int(
-    os.getenv("SENTINEL_V4_LAT_MOV_WINDOW_MINUTES", "30")
+    os.getenv("LSADRA_V4_LAT_MOV_WINDOW_MINUTES", "30")
 )
 
 # Cross-source correlation: number of source types before elevation
 CROSS_SOURCE_ELEVATION_THRESHOLD: int = int(
-    os.getenv("SENTINEL_V4_CROSS_SOURCE_ELEVATION", "2")
+    os.getenv("LSADRA_V4_CROSS_SOURCE_ELEVATION", "2")
 )
 
 # V4 dynamic severity score thresholds (override SEVERITY_THRESHOLDS for V4 rules)
 V4_SEVERITY_THRESHOLDS: dict = {
-    "CRITICAL": float(os.getenv("SENTINEL_V4_SEV_CRITICAL", "0.75")),
-    "HIGH":     float(os.getenv("SENTINEL_V4_SEV_HIGH",     "0.50")),
-    "MEDIUM":   float(os.getenv("SENTINEL_V4_SEV_MEDIUM",   "0.25")),
+    "CRITICAL": float(os.getenv("LSADRA_V4_SEV_CRITICAL", "0.75")),
+    "HIGH":     float(os.getenv("LSADRA_V4_SEV_HIGH",     "0.50")),
+    "MEDIUM":   float(os.getenv("LSADRA_V4_SEV_MEDIUM",   "0.25")),
 }
 
 # Brute force rule thresholds (tunable by analyst feedback)
-BRUTE_FORCE_5MIN_CRITICAL: int = int(os.getenv("SENTINEL_V4_BF_5MIN_CRITICAL", "15"))
-BRUTE_FORCE_5MIN_HIGH:     int = int(os.getenv("SENTINEL_V4_BF_5MIN_HIGH",     "5"))
-BRUTE_FORCE_15MIN_MEDIUM:  int = int(os.getenv("SENTINEL_V4_BF_15MIN_MED",     "8"))
+BRUTE_FORCE_5MIN_CRITICAL: int = int(os.getenv("LSADRA_V4_BF_5MIN_CRITICAL", "15"))
+BRUTE_FORCE_5MIN_HIGH:     int = int(os.getenv("LSADRA_V4_BF_5MIN_HIGH",     "5"))
+BRUTE_FORCE_15MIN_MEDIUM:  int = int(os.getenv("LSADRA_V4_BF_15MIN_MED",     "8"))
 
 # Port scan thresholds
-PORT_SCAN_CRITICAL_THRESHOLD: int = int(os.getenv("SENTINEL_V4_PORT_SCAN_CRITICAL", "50"))
-PORT_SCAN_HIGH_THRESHOLD:     int = int(os.getenv("SENTINEL_V4_PORT_SCAN_HIGH",     "15"))
+PORT_SCAN_CRITICAL_THRESHOLD: int = int(os.getenv("LSADRA_V4_PORT_SCAN_CRITICAL", "50"))
+PORT_SCAN_HIGH_THRESHOLD:     int = int(os.getenv("LSADRA_V4_PORT_SCAN_HIGH",     "15"))
 
 # Large data transfer threshold (bytes)
-LARGE_TRANSFER_BYTES: int = int(os.getenv("SENTINEL_V4_LARGE_TRANSFER_BYTES", "10000000"))
+LARGE_TRANSFER_BYTES: int = int(os.getenv("LSADRA_V4_LARGE_TRANSFER_BYTES", "10000000"))
 
 # Analyst feedback: maximum FP patterns to load for threshold tuning
-MAX_FP_PATTERNS_FOR_TUNING: int = int(os.getenv("SENTINEL_V4_MAX_FP_PATTERNS", "100"))
+MAX_FP_PATTERNS_FOR_TUNING: int = int(os.getenv("LSADRA_V4_MAX_FP_PATTERNS", "100"))
