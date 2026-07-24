@@ -34,7 +34,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       # Boot in dev mode so the §6 config guards (JWT secret / TLS) don't trip CI.
-      SENTINEL_DEV_MODE: "true"
+      LSADRA_DEV_MODE: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
