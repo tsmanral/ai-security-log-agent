@@ -35,6 +35,8 @@ jobs:
     env:
       # Boot in dev mode so the §6 config guards (JWT secret / TLS) don't trip CI.
       LSADRA_DEV_MODE: "true"
+      # Windows runners default to cp1252; force UTF-8 so the smoke test prints emoji.
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
