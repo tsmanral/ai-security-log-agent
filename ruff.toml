@@ -1,0 +1,14 @@
+# Bootstrap ruff config.
+#
+# The legacy codebase has ~963 default-ruleset findings and ~66 unformatted
+# files. Rather than a repo-wide reformat (which would collide with in-flight
+# PRs), we start with a correctness-only rule set that the code already passes
+# and tighten `select` incrementally. `ruff format` adoption is tracked as an
+# advisory CI step until a dedicated formatting PR lands.
+line-length = 100
+target-version = "py311"
+extend-exclude = ["docs/figures", "docs/figures2"]
+
+[lint]
+# Correctness rules only (syntax errors, undefined names, bad f-strings, etc.).
+select = ["E9", "F63", "F7", "F82", "F821"]

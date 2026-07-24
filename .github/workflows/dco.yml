@@ -1,0 +1,34 @@
+name: DCO
+
+# Developer Certificate of Origin: every commit in a PR must carry a
+# `Signed-off-by:` trailer (git commit -s). Enable this as a REQUIRED status
+# check in branch protection once existing history is sign-off-clean.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify Signed-off-by on every PR commit
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          missing=0
+          for c in $(git rev-list "$base..$head"); do
+            if ! git log -1 --format=%B "$c" | grep -qiE '^Signed-off-by: .+ <.+@.+>'; then
+              echo "::error::commit $c is missing a Signed-off-by line (use: git commit -s)"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "DCO check failed — add sign-off with 'git commit -s' (or rebase --signoff)."
+            exit 1
+          fi
+          echo "All PR commits are signed off."

@@ -355,10 +355,13 @@ except Exception as e:
 # ──────────────────────────────────────────────────────────────
 section("7. Database: migration + V4 CRUD")
 
+_MIGRATION_002 = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "lsadra", "storage", "migrations", "002_v4_schema.sql",
+)
+
 try:
-    migration_sql = open(
-        r"lsadra\storage\migrations\002_v4_schema.sql", "r"
-    ).read()
+    migration_sql = open(_MIGRATION_002, "r").read()
     conn = sqlite3.connect(":memory:")
     conn.executescript(migration_sql)
     tables = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
@@ -383,7 +386,7 @@ try:
     # Build a fully-bootstrapped connection and pass it directly to each helper
     conn = sqlite3.connect(tmp.name)
     conn.row_factory = sqlite3.Row
-    conn.executescript(open(r"lsadra\storage\migrations\002_v4_schema.sql").read())
+    conn.executescript(open(_MIGRATION_002).read())
     conn.execute("""CREATE TABLE IF NOT EXISTS ingestion_stats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         source_type TEXT NOT NULL UNIQUE,
